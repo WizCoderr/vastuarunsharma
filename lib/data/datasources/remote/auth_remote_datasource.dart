@@ -1,0 +1,93 @@
+import 'package:dio/dio.dart';
+
+import '../../models/user_model.dart';
+import '../../../core/api/api_endpoints.dart';
+
+class AuthRemoteDataSource {
+  final Dio _dio;
+
+  AuthRemoteDataSource(this._dio);
+
+  Future<AuthResponseBlock> login(String email, String password) async {
+    try {
+      final response = await _dio.post(
+        '${ApiEndpoints.baseUrl}${ApiEndpoints.login}',
+        data: {'email': email, 'password': password},
+      );
+
+      return _parseAuthResponse(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<AuthResponseBlock> register(
+    String email,
+    String password,
+    String name,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '${ApiEndpoints.baseUrl}${ApiEndpoints.register}',
+        data: {
+          'email': email,
+          'password': password,
+          'name': name,
+          'role': 'student', // Default role for app users
+        },
+      );
+
+      return _parseAuthResponse(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  AuthResponseBlock _parseAuthResponse(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      // Check success flag if standard ApiResponse structure is used
+      // Assuming standard ApiResponse structure: { success: true, data: { token: ..., user: ... } }
+      // OR sometimes direct: { token: ..., user: ... }
+
+      final success =
+          data['success'] as bool? ??
+          true; // Default to true if not present, adjust based on actual API
+
+      if (!success) {
+        throw Exception(data['message'] ?? 'Authentication failed');
+      }
+
+      final responseData = data['data'] ?? data;
+
+      if (responseData == null) throw Exception("Empty response data");
+
+      final token = responseData['token'] as String?;
+      final userMap = responseData['user'];
+
+      if (token == null || userMap == null) {
+        // Fallback if structure is different
+        throw Exception("Invalid response format: missing token or user");
+      }
+
+      return AuthResponseBlock(token: token, user: UserModel.fromJson(userMap));
+    }
+    throw Exception("Invalid response format");
+  }
+
+  Exception _handleError(DioException e) {
+    if (e.response != null && e.response!.data != null) {
+      final data = e.response!.data;
+      if (data is Map && data.containsKey('message')) {
+        return Exception(data['message']);
+      }
+    }
+    return Exception(e.message ?? 'Network Error');
+  }
+}
+
+class AuthResponseBlock {
+  final String token;
+  final UserModel user;
+
+  AuthResponseBlock({required this.token, required this.user});
+}
