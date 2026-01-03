@@ -9,14 +9,11 @@ import 'presentation/providers/auth_provider.dart';
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-
   // Initialize MediaKit for video playback
   MediaKit.ensureInitialized();
 
   // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
-  print('DEBUG: Raw Token: ${prefs.getString('auth_token')}');
-  print('DEBUG: Raw User Data: ${prefs.getString('user_data')}');
 
   runApp(
     ProviderScope(

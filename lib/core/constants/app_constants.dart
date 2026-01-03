@@ -1,3 +1,3 @@
 class AppConstants {
-  static const appName = 'Arun Sharma Vastu Consultancy';
+  static const appName = 'Vastu Arun Sharma';
 }

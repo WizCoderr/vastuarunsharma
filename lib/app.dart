@@ -30,7 +30,7 @@ class _VastuAppState extends ConsumerState<VastuApp> {
     FlutterNativeSplash.remove();
 
     return MaterialApp.router(
-      title: 'Vastu Learning',
+      title: 'Vastu Arun Sharma',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routerConfig: goRouter,

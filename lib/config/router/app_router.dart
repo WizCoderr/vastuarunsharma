@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/route_constants.dart';
-import '../../domain/entities/user.dart';
+
 import '../../presentation/providers/auth_provider.dart';
 import '../../presentation/screens/landing/landing_screen.dart';
 import '../../presentation/screens/auth/login_screen.dart';
@@ -23,12 +23,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   final notifier = ref.watch(routerNotifierProvider);
 
   // Cache auth state to avoid calling ref.read during widget disposal
-  User? cachedUser;
-  ref.listen<AsyncValue<User?>>(authStateProvider, (previous, next) {
-    cachedUser = next.whenData((user) => user).value;
-  }, fireImmediately: true);
-
-  bool isLoggedIn() => cachedUser != null;
+  bool isLoggedIn() {
+    final authState = ref.read(authStateProvider);
+    return authState.asData?.value != null;
+  }
 
   return GoRouter(
     initialLocation: RouteConstants.landing,
