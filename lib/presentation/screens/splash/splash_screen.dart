@@ -65,7 +65,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            FlutterLogo(size: 100),
             SizedBox(height: 24),
             Text(
               'Arun Sharma Vastu Consultancy',
