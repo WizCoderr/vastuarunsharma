@@ -16,6 +16,7 @@ import '../../presentation/screens/video/video_player_screen.dart';
 import '../../presentation/screens/profile/profile_screen.dart';
 import '../../presentation/screens/stats/stats_screen.dart';
 import '../../presentation/screens/payment/payment_screen.dart';
+import '../../presentation/screens/pdf/pdf_viewer_screen.dart';
 import '../../presentation/widgets/navigation/app_navigation_shell.dart';
 import 'router_notifier.dart';
 
@@ -147,6 +148,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             // No redirect - show guest view with login prompt
           ),
         ],
+      ),
+      GoRoute(
+        path: '/pdf-viewer',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return PdfViewerScreen(
+            url: extra['url'] as String,
+            title: extra['title'] as String,
+          );
+        },
       ),
     ],
   );

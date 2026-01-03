@@ -84,9 +84,7 @@ class CourseDetailsScreen extends ConsumerWidget {
                 children: [
                   const CircleAvatar(
                     radius: 20,
-                    backgroundImage: AssetImage(
-                      'assets/images/instructor.png',
-                    )
+                    backgroundImage: AssetImage('assets/images/instructor.png'),
                   ),
                   const SizedBox(width: 10),
                   Column(
@@ -188,7 +186,13 @@ class CourseDetailsScreen extends ConsumerWidget {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 14),
-                ...course.resources.map((resource) => _resourceTile(resource)),
+                ...course.resources.map(
+                  (resource) => _resourceTile(
+                    context,
+                    resource,
+                    course.enrolled ?? false,
+                  ),
+                ),
               ],
 
               const SizedBox(height: 100),
@@ -368,58 +372,90 @@ class CourseDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _resourceTile(resource) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          Container(
-            height: 40,
-            width: 40,
-            decoration: BoxDecoration(
-              color: resource.type == 'FREE'
-                  ? Colors.blue.shade50
-                  : Colors.orange.shade50,
-              borderRadius: BorderRadius.circular(20),
+  Widget _resourceTile(BuildContext context, resource, bool isEnrolled) {
+    bool isLocked = resource.type != 'FREE' && !isEnrolled;
+
+    return GestureDetector(
+      onTap: () {
+        if (isLocked) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Enroll in this course to access paid resources."),
             ),
-            child: Icon(
-              Icons.description,
-              color: resource.type == 'FREE' ? Colors.blue : Colors.orange,
-              size: 20,
+          );
+          return;
+        }
+
+        if (resource.url.isNotEmpty) {
+          context.push(
+            '/pdf-viewer',
+            extra: {'url': resource.url, 'title': resource.title},
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            Container(
+              height: 40,
+              width: 40,
+              decoration: BoxDecoration(
+                color: isLocked
+                    ? Colors.grey.shade100
+                    : (resource.type == 'FREE'
+                          ? Colors.blue.shade50
+                          : Colors.orange.shade50),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                isLocked ? Icons.lock : Icons.description,
+                color: isLocked
+                    ? Colors.grey
+                    : (resource.type == 'FREE' ? Colors.blue : Colors.orange),
+                size: 20,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  resource.title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    resource.title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: isLocked ? Colors.grey : Colors.black87,
+                    ),
                   ),
-                ),
-                Text(
-                  resource.type,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: resource.type == 'FREE'
-                        ? Colors.blue
-                        : Colors.orange,
+                  Text(
+                    isLocked ? "Locked" : resource.type,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isLocked
+                          ? Colors.grey
+                          : (resource.type == 'FREE'
+                                ? Colors.blue
+                                : Colors.orange),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const Icon(Icons.download, color: Colors.grey),
-        ],
+            Icon(
+              isLocked ? Icons.lock_outline : Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.grey,
+            ),
+          ],
+        ),
       ),
     );
   }
