@@ -3,7 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/route_constants.dart';
 import '../../providers/course_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../providers/auth_provider.dart';
+import '../../providers/live_class_provider.dart';
+import '../../../domain/entities/live_class.dart';
+import '../../../domain/entities/recording.dart';
+import '../../../domain/entities/course.dart';
 
 class CourseDetailsScreen extends ConsumerWidget {
   final String courseId;
@@ -13,6 +19,8 @@ class CourseDetailsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final courseAsync = ref.watch(courseDetailsProvider(courseId));
+    final upcomingClassesAsync = ref.watch(upcomingLiveClassesProvider);
+    final recordingsAsync = ref.watch(courseRecordingsProvider(courseId));
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -142,6 +150,50 @@ class CourseDetailsScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 24),
+
+              // Upcoming Live Classes Section
+              upcomingClassesAsync.when(
+                data: (classes) {
+                  final courseClasses = classes.where((c) => c.courseId == courseId).toList();
+                  if (courseClasses.isEmpty) return const SizedBox.shrink();
+                  
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Upcoming Live Class",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 10),
+                      ...courseClasses.map((c) => _LiveClassTile(liveClass: c)),
+                      const SizedBox(height: 24),
+                    ],
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (error, stack) => const SizedBox.shrink(),
+              ),
+
+              // Recordings Section
+              recordingsAsync.when(
+                data: (recordings) {
+                  if (recordings.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Class Recordings",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 10),
+                      ...recordings.map((r) => _RecordingTile(recording: r)),
+                      const SizedBox(height: 24),
+                    ],
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (error, stack) => const SizedBox.shrink(),
+              ),
 
               // About Course
               const Text(
@@ -317,7 +369,7 @@ class CourseDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _sectionTile(section, BuildContext context) {
+  Widget _sectionTile(Section section, BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
@@ -365,8 +417,7 @@ class CourseDetailsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-              )
-              .toList(),
+              ),
         ],
       ),
     );
@@ -485,5 +536,114 @@ class CourseDetailsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+class _LiveClassTile extends StatelessWidget {
+  final LiveClass liveClass;
+  const _LiveClassTile({required this.liveClass});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.videocam, color: Colors.red.shade700),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  liveClass.title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Scheduled: ${_formatTime(liveClass.scheduledAt)}",
+            style: const TextStyle(color: Colors.black87),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: liveClass.canJoin && liveClass.meetingUrl != null
+                  ? () {
+                      launchUrl(Uri.parse(liveClass.meetingUrl!), mode: LaunchMode.externalApplication);
+                    }
+                  : null, 
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.red.shade100,
+              ),
+              child: const Text("Join Class"),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+  
+  String _formatTime(DateTime dt) {
+    return "${dt.day}/${dt.month} ${dt.hour}:${dt.minute.toString().padLeft(2,'0')}";
+  }
+}
+
+class _RecordingTile extends StatelessWidget {
+  final Recording recording;
+  const _RecordingTile({required this.recording});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+         // Open Video Player - assuming passing courseId logic
+         context.push(RouteConstants.videoPlayerPath(recording.courseId)); 
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+           color: Colors.white,
+           borderRadius: BorderRadius.circular(12),
+           border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+             Container(
+               width: 60, height: 60,
+               decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(8)),
+               child: const Icon(Icons.play_circle_outline, size: 30, color: Colors.black54),
+             ),
+             const SizedBox(width: 12),
+             Expanded(
+               child: Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 children: [
+                   Text(recording.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                   Text("${recording.durationMinutes} mins • ${_formatDate(recording.date)}", style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                 ],
+               ),
+             ),
+             const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime dt) {
+    return "${dt.day}/${dt.month}/${dt.year}";
   }
 }

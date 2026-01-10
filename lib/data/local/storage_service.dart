@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/errors/exceptions.dart';
 import '../models/user_model.dart';
@@ -47,18 +48,15 @@ class StorageService {
     try {
       final String? userJson = _prefs.getString(_userKey);
       if (userJson == null) {
-        print('StorageService: No user data found in storage');
         return null;
       }
-      print('StorageService: Found user data: $userJson');
 
       final Map<String, dynamic> map = jsonDecode(userJson);
       final user = UserModel.fromJson(map);
-      print('StorageService: Successfully parsed user: ${user.email}');
       return user;
     } catch (e, st) {
-      print('StorageService: Failed to parse user data: $e');
-      print(st);
+      debugPrint('StorageService: Failed to parse user data: $e');
+      debugPrint(st.toString());
       return null;
     }
   }

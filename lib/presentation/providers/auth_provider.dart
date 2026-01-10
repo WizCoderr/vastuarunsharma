@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,6 +8,7 @@ import '../../data/repositories/auth_repository.dart';
 import '../../data/datasources/remote/auth_remote_datasource.dart';
 import '../../domain/entities/user.dart';
 import '../../core/api/api_endpoints.dart';
+import '../../core/services/notification_service.dart';
 
 // Providers
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
@@ -43,43 +45,45 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 final authStateProvider =
     StateNotifierProvider<AuthNotifier, AsyncValue<User?>>((ref) {
       final repository = ref.watch(authRepositoryProvider);
-      return AuthNotifier(repository);
+      final notificationService = ref.watch(notificationServiceProvider);
+      return AuthNotifier(repository, notificationService);
     });
 
 // State Notifier
 class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
   final AuthRepository _repository;
+  final NotificationService _notificationService;
 
-  AuthNotifier(this._repository) : super(const AsyncValue.loading()) {
+  AuthNotifier(this._repository, this._notificationService) : super(const AsyncValue.loading()) {
     _init();
   }
 
   Future<void> _init() async {
-    print('AuthNotifier: Initializing...');
+    debugPrint('AuthNotifier: Initializing...');
     try {
       final isLoggedIn = await _repository.checkAuthStatus();
-      print('AuthNotifier: checkAuthStatus result: $isLoggedIn');
+      debugPrint('AuthNotifier: checkAuthStatus result: $isLoggedIn');
 
       if (isLoggedIn) {
         final user = _repository.getCurrentUser();
-        print('AuthNotifier: getCurrentUser result: $user');
 
         if (user != null) {
           state = AsyncValue.data(user);
-          print('AuthNotifier: State updated to authenticated user');
+          debugPrint('AuthNotifier: State updated to authenticated user');
+          _notificationService.syncToken();
         } else {
-          print(
+          debugPrint(
             'AuthNotifier: User data is null despite token existence. Clearing auth.',
           );
           await _repository.logout();
           state = const AsyncValue.data(null);
         }
       } else {
-        print('AuthNotifier: Not logged in');
+        debugPrint('AuthNotifier: Not logged in');
         state = const AsyncValue.data(null);
       }
     } catch (e, st) {
-      print('AuthNotifier: Init failed: $e');
+      debugPrint('AuthNotifier: Init failed: $e');
       state = AsyncValue.error(e, st);
     }
   }
@@ -89,6 +93,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
     try {
       final user = await _repository.login(email, password);
       state = AsyncValue.data(user);
+      await _notificationService.syncToken();
     } catch (e, st) {
       state = AsyncValue.error(e, st);
       rethrow;
@@ -100,6 +105,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
     try {
       final user = await _repository.register(email, password, name);
       state = AsyncValue.data(user);
+      await _notificationService.syncToken();
     } catch (e, st) {
       state = AsyncValue.error(e, st);
       rethrow;
@@ -107,6 +113,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
   }
 
   Future<void> logout() async {
+    await _notificationService.removeToken();
     await _repository.logout();
     state = const AsyncValue.data(null);
   }

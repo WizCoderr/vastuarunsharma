@@ -15,6 +15,14 @@ class ApiEndpoints {
   static String courseCurriculum(String id) =>
       '/api/student/courses/$id/curriculum';
 
+  // Live Classes
+  static const String todayLiveClasses = '/api/student/live-classes/today';
+  static const String upcomingLiveClasses = '/api/student/live-classes/upcoming';
+  static String courseRecordings(String courseId) => '/api/student/course/$courseId/recordings';
+
+  // Notifications
+  static const String deviceToken = '/api/student/device-token';
+
   // Progress
   static const String updateProgress = '/api/student/progress/update';
 

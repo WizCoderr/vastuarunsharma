@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyDWEpV4dL25fi6sAvHuMn3an7fAz5a1XPw</string>
+	<key>GCM_SENDER_ID</key>
+	<string>996974323504</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.vastuarunsharma.vastuMobile</string>
+	<key>PROJECT_ID</key>
+	<string>vastunotification</string>
+	<key>STORAGE_BUCKET</key>
+	<string>vastunotification.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:996974323504:ios:2312e6ed44bd2206d00af5</string>
+</dict>
+</plist>

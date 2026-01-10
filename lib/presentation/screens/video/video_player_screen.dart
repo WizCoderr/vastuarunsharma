@@ -188,7 +188,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
           ),
           loading: () =>
               const Text('Loading...', style: TextStyle(color: Colors.white)),
-          error: (_, __) =>
+          error: (error, stack) =>
               const Text('Error', style: TextStyle(color: Colors.white)),
         ),
       ),
@@ -216,7 +216,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         if (widget.initialLectureId != null) {
           _findAndPlayLecture(course, widget.initialLectureId!);
         } else {
-          _playLecture(course, 0, 0);
+          _playFirstAvailableLecture(course);
         }
       });
     }
@@ -553,7 +553,16 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         }
       }
     }
-    _playLecture(course, 0, 0);
+    _playFirstAvailableLecture(course);
+  }
+
+  void _playFirstAvailableLecture(Course course) {
+    for (int i = 0; i < course.sections.length; i++) {
+      if (course.sections[i].lectures.isNotEmpty) {
+        _playLecture(course, i, 0);
+        return;
+      }
+    }
   }
 
   Widget _buildError(Object error) {

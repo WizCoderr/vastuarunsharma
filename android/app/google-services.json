@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "996974323504",
+    "project_id": "vastunotification",
+    "storage_bucket": "vastunotification.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:996974323504:android:93aa6f5c09202090d00af5",
+        "android_client_info": {
+          "package_name": "com.vastuarunsharma.vastu_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBawQKOEQBGB2mWHyQQKmCgQ9_nuqYAis8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

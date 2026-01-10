@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/route_constants.dart';
 import '../../providers/auth_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../domain/entities/live_class.dart';
+
 import '../../providers/course_provider.dart';
+import '../../providers/live_class_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -14,6 +18,10 @@ class DashboardScreen extends ConsumerWidget {
     final user = authState.value;
     final allCoursesAsync = ref.watch(allCoursesProvider);
     final enrolledCoursesAsync = ref.watch(enrolledCoursesProvider);
+
+    final todayLiveClassesAsync = user != null
+        ? ref.watch(todayLiveClassesProvider)
+        : const AsyncValue.data(<LiveClass>[]);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -33,6 +41,7 @@ class DashboardScreen extends ConsumerWidget {
           await Future.wait([
             ref.refresh(allCoursesProvider.future),
             ref.refresh(enrolledCoursesProvider.future),
+            if (user != null) ref.refresh(todayLiveClassesProvider.future),
           ]);
           return Future.delayed(const Duration(milliseconds: 500));
         },
@@ -41,7 +50,21 @@ class DashboardScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
+              // Today's Live Class Banner
+              if (user != null)
+                todayLiveClassesAsync.when(
+                  data: (classes) {
+                    if (classes.isEmpty) return const SizedBox.shrink();
+                    final liveClass = classes.first;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      child: _LiveClassBanner(liveClass: liveClass),
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (err, _) => const SizedBox.shrink(),
+                ),
               // Quick Actions
               Row(
                 children: [
@@ -189,7 +212,7 @@ class DashboardScreen extends ConsumerWidget {
                   },
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
-                  error: (_, __) => const SizedBox.shrink(),
+                  error: (error, stack) => const SizedBox.shrink(),
                 ),
                 const SizedBox(height: 24),
               ],
@@ -369,5 +392,128 @@ class _CourseCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _LiveClassBanner extends StatelessWidget {
+  final LiveClass liveClass;
+
+  const _LiveClassBanner({required this.liveClass});
+
+  @override
+  Widget build(BuildContext context) {
+    final isLive = liveClass.status == 'LIVE';
+    
+    return GestureDetector(
+      onTap: () {
+        context.push(RouteConstants.courseDetailsPath(liveClass.courseId));
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.red.shade700, Colors.red.shade500],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.red.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.videocam, 
+                        color: Colors.white, 
+                        size: 16
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isLive ? "LIVE NOW" : "TODAY",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                if (liveClass.startsIn > 0 && !isLive)
+                  Text(
+                    "Starts in ${liveClass.startsIn} min",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                    ),
+                  )
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              liveClass.title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              liveClass.courseName,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: liveClass.canJoin && liveClass.meetingUrl != null
+                    ? () {
+                        final uri = Uri.parse(liveClass.meetingUrl!);
+                        launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    : null, // If null, the click passes through? No, disabled button blocks.
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.red.shade700,
+                  disabledBackgroundColor: Colors.white24,
+                  disabledForegroundColor: Colors.white38,
+                ),
+                child: Text(isLive ? "Join Class" : "Scheduled @ ${_formatTime(liveClass.scheduledAt)}"),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatTime(DateTime dt) {
+    final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+    final minute = dt.minute.toString().padLeft(2, '0');
+    final period = dt.hour >= 12 ? 'PM' : 'AM';
+    return "$hour:$minute $period";
   }
 }
