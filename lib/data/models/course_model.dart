@@ -1,4 +1,55 @@
+import '../../domain/entities/live_class.dart';
 import '../../domain/entities/course.dart';
+
+class LiveClassModel extends LiveClass {
+  const LiveClassModel({
+    required super.id,
+    required super.courseId,
+    required super.courseName,
+    required super.title,
+    required super.description,
+    required super.scheduledAt,
+    required super.durationMinutes,
+    required super.status,
+    super.meetingUrl,
+    required super.canJoin,
+    required super.startsIn,
+  });
+
+  factory LiveClassModel.fromJson(Map<String, dynamic> json) {
+    return LiveClassModel(
+      id: json['id'] as String? ?? '',
+      courseId: json['courseId'] as String? ?? '',
+      courseName: json['courseName'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      scheduledAt:
+          DateTime.tryParse(json['scheduledAt'] as String? ?? '') ??
+          DateTime.now(),
+      durationMinutes: json['durationMinutes'] as int? ?? 0,
+      status: json['status'] as String? ?? 'SCHEDULED',
+      meetingUrl: json['meetingUrl'] as String?,
+      canJoin: json['canJoin'] as bool? ?? false,
+      startsIn: json['startsIn'] as int? ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'courseId': courseId,
+      'courseName': courseName,
+      'title': title,
+      'description': description,
+      'scheduledAt': scheduledAt.toIso8601String(),
+      'durationMinutes': durationMinutes,
+      'status': status,
+      'meetingUrl': meetingUrl,
+      'canJoin': canJoin,
+      'startsIn': startsIn,
+    };
+  }
+}
 
 class LectureModel extends Lecture {
   const LectureModel({
@@ -32,7 +83,8 @@ class SectionModel extends Section {
     required super.id,
     required super.title,
     required List<LectureModel> super.lectures,
-  });
+    List<LiveClassModel>? liveClasses,
+  }) : super(liveClasses: liveClasses ?? const []);
 
   factory SectionModel.fromJson(Map<String, dynamic> json) {
     return SectionModel(
@@ -43,6 +95,11 @@ class SectionModel extends Section {
               ?.map((e) => LectureModel.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      liveClasses:
+          (json['liveClasses'] as List<dynamic>?)
+              ?.map((e) => LiveClassModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 
@@ -51,6 +108,9 @@ class SectionModel extends Section {
       'id': id,
       'title': title,
       'lectures': lectures.map((e) => (e as LectureModel).toJson()).toList(),
+      'liveClasses': liveClasses
+          .map((e) => (e as LiveClassModel).toJson())
+          .toList(),
     };
   }
 }
@@ -66,7 +126,8 @@ class CourseModel extends Course {
     required super.instructorId,
     required super.mediaType,
     required List<SectionModel> super.sections,
-  });
+    List<LiveClassModel>? liveClasses,
+  }) : super(liveClasses: liveClasses ?? const []);
 
   factory CourseModel.fromJson(Map<String, dynamic> json) {
     return CourseModel(
@@ -83,6 +144,11 @@ class CourseModel extends Course {
               ?.map((e) => SectionModel.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      liveClasses:
+          (json['liveClasses'] as List<dynamic>?)
+              ?.map((e) => LiveClassModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 
@@ -97,6 +163,9 @@ class CourseModel extends Course {
       'instructorId': instructorId,
       'mediaType': mediaType,
       'sections': sections.map((e) => (e as SectionModel).toJson()).toList(),
+      'liveClasses': liveClasses
+          .map((e) => (e as LiveClassModel).toJson())
+          .toList(),
     };
   }
 }

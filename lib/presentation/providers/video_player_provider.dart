@@ -144,6 +144,12 @@ class VideoPlayerNotifier extends Notifier<VideoPlayerState?> {
     _player?.pause();
   }
 
+  /// Stop the video
+  Future<void> stop() async {
+    await _player?.stop();
+    state = state?.copyWith(isPlaying: false, position: Duration.zero);
+  }
+
   /// Toggle play/pause
   void togglePlayPause() {
     if (state?.isPlaying ?? false) {
@@ -230,8 +236,8 @@ class VideoPlayerNotifier extends Notifier<VideoPlayerState?> {
 /// Provider for video player
 final videoPlayerProvider =
     NotifierProvider<VideoPlayerNotifier, VideoPlayerState?>(() {
-  return VideoPlayerNotifier();
-});
+      return VideoPlayerNotifier();
+    });
 
 /// Provider for current lecture index in a course
 final currentLectureIndexProvider = StateProvider<int>((ref) => 0);

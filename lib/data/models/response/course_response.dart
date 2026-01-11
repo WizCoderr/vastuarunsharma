@@ -1,3 +1,62 @@
+class LiveClassResponse {
+  final String id;
+  final String courseId;
+  final String courseName;
+  final String title;
+  final String description;
+  final DateTime scheduledAt;
+  final int durationMinutes;
+  final String status;
+  final String? meetingUrl;
+  final bool canJoin;
+  final int startsIn;
+
+  LiveClassResponse({
+    required this.id,
+    required this.courseId,
+    required this.courseName,
+    required this.title,
+    required this.description,
+    required this.scheduledAt,
+    required this.durationMinutes,
+    required this.status,
+    this.meetingUrl,
+    required this.canJoin,
+    required this.startsIn,
+  });
+
+  factory LiveClassResponse.fromJson(Map<String, dynamic> json) =>
+      LiveClassResponse(
+        id: json['id'] as String? ?? '',
+        courseId: json['courseId'] as String? ?? '',
+        courseName: json['courseName'] as String? ?? '',
+        title: json['title'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+        scheduledAt:
+            DateTime.tryParse(json['scheduledAt'] as String? ?? '') ??
+            DateTime.now(),
+        durationMinutes: json['durationMinutes'] as int? ?? 0,
+        status: json['status'] as String? ?? 'SCHEDULED',
+        meetingUrl: json['meetingUrl'] as String?,
+        canJoin: json['canJoin'] as bool? ?? false,
+        startsIn: json['startsIn'] as int? ?? 0,
+      );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'courseId': courseId,
+    'courseName': courseName,
+    'title': title,
+    'description': description,
+    'scheduledAt': scheduledAt.toIso8601String(),
+    'durationMinutes': durationMinutes,
+    'status': status,
+    'meetingUrl': meetingUrl,
+    'canJoin': canJoin,
+    'startsIn': startsIn,
+  };
+}
+
 class ResourceResponse {
   final String id;
   final String title;
@@ -60,30 +119,37 @@ class SectionResponse {
   final String id;
   final String title;
   final List<LectureResponse> lectures;
+  final List<LiveClassResponse> liveClasses;
 
   SectionResponse({
     required this.id,
     required this.title,
     required this.lectures,
+    required this.liveClasses,
   });
 
-  factory SectionResponse.fromJson(Map<String, dynamic> json) =>
-      SectionResponse(
-        id: json['id'] as String? ?? '',
-        title: json['title'] as String? ?? '',
-        lectures:
-            (json['lectures'] as List<dynamic>?)
-                ?.map(
-                  (e) => LectureResponse.fromJson(e as Map<String, dynamic>),
-                )
-                .toList() ??
-            [],
-      );
+  factory SectionResponse.fromJson(
+    Map<String, dynamic> json,
+  ) => SectionResponse(
+    id: json['id'] as String? ?? '',
+    title: json['title'] as String? ?? '',
+    lectures:
+        (json['lectures'] as List<dynamic>?)
+            ?.map((e) => LectureResponse.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+    liveClasses:
+        (json['liveClasses'] as List<dynamic>?)
+            ?.map((e) => LiveClassResponse.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+  );
 
   Map<String, dynamic> toJson() => {
     'id': id,
     'title': title,
     'lectures': lectures.map((e) => e.toJson()).toList(),
+    'liveClasses': liveClasses.map((e) => e.toJson()).toList(),
   };
 }
 
@@ -101,6 +167,7 @@ class CourseResponse {
   final bool? enrolled; // Only present in course details response
   final List<SectionResponse> sections;
   final List<ResourceResponse> resources;
+  final List<LiveClassResponse> liveClasses;
 
   CourseResponse({
     required this.id,
@@ -116,6 +183,7 @@ class CourseResponse {
     this.enrolled,
     required this.sections,
     required this.resources,
+    required this.liveClasses,
   });
 
   factory CourseResponse.fromJson(Map<String, dynamic> json) => CourseResponse(
@@ -140,6 +208,11 @@ class CourseResponse {
             ?.map((e) => ResourceResponse.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [],
+    liveClasses:
+        ((json['liveClasses'] ?? []) as List<dynamic>?)
+            ?.map((e) => LiveClassResponse.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
   );
 
   Map<String, dynamic> toJson() => {
@@ -156,5 +229,6 @@ class CourseResponse {
     if (enrolled != null) 'enrolled': enrolled,
     'sections': sections.map((e) => e.toJson()).toList(),
     'resources': resources.map((e) => e.toJson()).toList(),
+    'liveClasses': liveClasses.map((e) => e.toJson()).toList(),
   };
 }

@@ -1,5 +1,6 @@
 import 'package:vastu_mobile/shared/utils/either.dart';
 import '../../domain/entities/course.dart' as entity;
+import '../../domain/entities/live_class.dart' as entity_live;
 import '../../domain/repositories/course_repository.dart';
 import '../datasources/remote/course_remote_datasource.dart';
 import '../models/response/course_response.dart';
@@ -65,12 +66,14 @@ class CourseRepositoryImpl implements CourseRepository {
     enrolled: r.enrolled,
     sections: r.sections.map((s) => _mapSection(s)).toList(),
     resources: r.resources.map((res) => _mapResource(res)).toList(),
+    liveClasses: r.liveClasses.map((l) => _mapLiveClass(l)).toList(),
   );
 
   entity.Section _mapSection(SectionResponse s) => entity.Section(
     id: s.id,
     title: s.title,
     lectures: s.lectures.map((l) => _mapLecture(l)).toList(),
+    liveClasses: s.liveClasses.map((l) => _mapLiveClass(l)).toList(),
   );
 
   entity.Lecture _mapLecture(LectureResponse l) => entity.Lecture(
@@ -82,4 +85,19 @@ class CourseRepositoryImpl implements CourseRepository {
 
   entity.Resource _mapResource(ResourceResponse r) =>
       entity.Resource(id: r.id, title: r.title, type: r.type, url: r.url);
+
+  entity_live.LiveClass _mapLiveClass(LiveClassResponse l) =>
+      entity_live.LiveClass(
+        id: l.id,
+        courseId: l.courseId,
+        courseName: l.courseName,
+        title: l.title,
+        description: l.description,
+        scheduledAt: l.scheduledAt,
+        durationMinutes: l.durationMinutes,
+        status: l.status,
+        meetingUrl: l.meetingUrl,
+        canJoin: l.canJoin,
+        startsIn: l.startsIn,
+      );
 }

@@ -4,11 +4,14 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/route_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/course.dart';
+import '../../../domain/entities/live_class.dart';
 import '../../../shared/widgets/custom_video_player.dart';
 import '../../providers/course_provider.dart';
+import '../../providers/live_class_provider.dart';
 import '../../providers/pip_provider.dart';
 import '../../providers/stream_url_provider.dart';
 import '../../providers/video_player_provider.dart';
+import 'live_session_redirect_screen.dart';
 
 class VideoPlayerScreen extends ConsumerStatefulWidget {
   final String courseId;
@@ -29,6 +32,8 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   int _currentSectionIndex = 0;
   int _currentLectureIndex = 0;
   bool _isFullscreen = false;
+  LiveClass? _availableLiveClass;
+  bool _isLoadingContent = false;
 
   // Store reference to avoid using ref in dispose()
   late final VideoPlayerNotifier _videoPlayerNotifier;
@@ -48,17 +53,86 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   Future<void> _loadLecture(Lecture lecture) async {
     setState(() {
       _currentLecture = lecture;
+      _isLoadingContent = true;
+      _availableLiveClass = null; // Reset live class
     });
 
-    String videoUrl;
+    String? videoUrl;
+
+    // Try to get cached stream URL first
     try {
-      final streamUrl = await ref.read(cachedStreamUrlProvider(lecture.id).future);
-      videoUrl = streamUrl.url;
+      final streamUrl = await ref.read(
+        cachedStreamUrlProvider(lecture.id).future,
+      );
+      if (streamUrl.url.isNotEmpty) {
+        videoUrl = streamUrl.url;
+      }
     } catch (e) {
-      videoUrl = lecture.videoUrl;
+      // Ignore cache error, fallback to lecture.videoUrl
     }
 
-    await ref.read(videoPlayerProvider.notifier).initialize(videoUrl, lecture);
+    // Fallback to direct video URL if cache failed or returned empty
+    if (videoUrl == null || videoUrl.isEmpty) {
+      if (lecture.videoUrl.isNotEmpty) {
+        videoUrl = lecture.videoUrl;
+      }
+    }
+
+    // If we still don't have a valid video URL, check for live classes
+    if (videoUrl == null || videoUrl.isEmpty) {
+      debugPrint(
+        'No video URL found for lecture ${lecture.id}. Checking for live classes...',
+      );
+      try {
+        // Fetch today's and upcoming live classes
+        final todayClasses = await ref.read(todayLiveClassesProvider.future);
+        final upcomingClasses = await ref.read(
+          upcomingLiveClassesProvider.future,
+        );
+
+        // Combine and find a relevant live class for this course
+        // Currently, we just show any live class for this course as a fallback,
+        // ideally we might match strictly by schedule if the lecture metadata had it.
+        // For now, we prioritize:
+        // 1. Live/Scheduled classes for this specific course
+
+        final courseLiveClasses = [
+          ...todayClasses,
+          ...upcomingClasses,
+        ].where((liveClass) => liveClass.courseId == widget.courseId).toList();
+
+        // Sort by start time: Live now first, then soonest upcoming
+        courseLiveClasses.sort((a, b) {
+          // If statuses differ, prioritize LIVE
+          if (a.status == 'LIVE' && b.status != 'LIVE') return -1;
+          if (b.status == 'LIVE' && a.status != 'LIVE') return 1;
+          // Otherwise sort by scheduled time
+          return a.scheduledAt.compareTo(b.scheduledAt);
+        });
+
+        if (courseLiveClasses.isNotEmpty) {
+          setState(() {
+            _availableLiveClass = courseLiveClasses.first;
+            _isLoadingContent = false;
+          });
+          // Stop player if it was running
+          await ref.read(videoPlayerProvider.notifier).stop();
+          return;
+        }
+      } catch (e) {
+        debugPrint('Error fetching live classes: $e');
+      }
+    }
+
+    // If we have a video URL (or even if we don't and found no live class), initialize player
+    // If videoUrl is still empty here, the player handles it (shows error/loading depending on impl)
+    await ref
+        .read(videoPlayerProvider.notifier)
+        .initialize(videoUrl ?? '', lecture);
+
+    setState(() {
+      _isLoadingContent = false;
+    });
   }
 
   void _playLecture(Course course, int sectionIndex, int lectureIndex) {
@@ -78,17 +152,29 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
     if (_currentLectureIndex < currentSection.lectures.length - 1) {
       _playLecture(course, _currentSectionIndex, _currentLectureIndex + 1);
-    } else if (_currentSectionIndex < course.sections.length - 1) {
-      _playLecture(course, _currentSectionIndex + 1, 0);
+    } else {
+      // Find next section with lectures
+      for (int i = _currentSectionIndex + 1; i < course.sections.length; i++) {
+        if (course.sections[i].lectures.isNotEmpty) {
+          _playLecture(course, i, 0);
+          return;
+        }
+      }
     }
   }
 
   void _playPreviousLecture(Course course) {
     if (_currentLectureIndex > 0) {
       _playLecture(course, _currentSectionIndex, _currentLectureIndex - 1);
-    } else if (_currentSectionIndex > 0) {
-      final prevSection = course.sections[_currentSectionIndex - 1];
-      _playLecture(course, _currentSectionIndex - 1, prevSection.lectures.length - 1);
+    } else {
+      // Find previous section with lectures
+      for (int i = _currentSectionIndex - 1; i >= 0; i--) {
+        if (course.sections[i].lectures.isNotEmpty) {
+          final prevSection = course.sections[i];
+          _playLecture(course, i, prevSection.lectures.length - 1);
+          return;
+        }
+      }
     }
   }
 
@@ -104,7 +190,10 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   }
 
   int _getTotalLectures(Course course) {
-    return course.sections.fold(0, (sum, section) => sum + section.lectures.length);
+    return course.sections.fold(
+      0,
+      (sum, section) => sum + section.lectures.length,
+    );
   }
 
   int _getCurrentLectureNumber(Course course) {
@@ -115,14 +204,24 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     return count + _currentLectureIndex + 1;
   }
 
-  bool _canPlayPrevious() {
-    return _currentSectionIndex > 0 || _currentLectureIndex > 0;
+  bool _canPlayPrevious(Course course) {
+    if (_currentLectureIndex > 0) return true;
+    // Check if any previous section has lectures
+    for (int i = _currentSectionIndex - 1; i >= 0; i--) {
+      if (course.sections[i].lectures.isNotEmpty) return true;
+    }
+    return false;
   }
 
   bool _canPlayNext(Course course) {
     final currentSection = course.sections[_currentSectionIndex];
-    return _currentLectureIndex < currentSection.lectures.length - 1 ||
-        _currentSectionIndex < course.sections.length - 1;
+    if (_currentLectureIndex < currentSection.lectures.length - 1) return true;
+
+    // Check if any subsequent section has lectures
+    for (int i = _currentSectionIndex + 1; i < course.sections.length; i++) {
+      if (course.sections[i].lectures.isNotEmpty) return true;
+    }
+    return false;
   }
 
   @override
@@ -138,6 +237,15 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     }
 
     if (_isFullscreen) {
+      // If we are showing live class info instead of video, fullscreen doesn't make sense
+      // But if somehow triggered, handle gracefully
+      if (_availableLiveClass != null) {
+        return Scaffold(
+          backgroundColor: Colors.black,
+          body: LiveSessionRedirectScreen(liveClass: _availableLiveClass!),
+        );
+      }
+
       return Scaffold(
         backgroundColor: Colors.black,
         body: CustomVideoPlayer(
@@ -223,14 +331,20 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
     return Column(
       children: [
-        // Video Player
+        // Video Player Area
         AspectRatio(
           aspectRatio: 16 / 9,
-          child: CustomVideoPlayer(
-            showControls: true,
-            onFullscreenToggle: _toggleFullscreen,
-            onPipToggle: _enterPipMode,
-          ),
+          child: _isLoadingContent
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                )
+              : _availableLiveClass != null
+              ? LiveSessionRedirectScreen(liveClass: _availableLiveClass!)
+              : CustomVideoPlayer(
+                  showControls: true,
+                  onFullscreenToggle: _toggleFullscreen,
+                  onPipToggle: _enterPipMode,
+                ),
         ),
 
         // Course Info Header
@@ -270,6 +384,8 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     );
   }
 
+  // Placeholder removed, using LiveSessionRedirectScreen
+
   Widget _buildCourseInfoHeader(Course course) {
     final totalLectures = _getTotalLectures(course);
     final currentLecture = _getCurrentLectureNumber(course);
@@ -287,7 +403,11 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.play_circle_outline, size: 16, color: AppColors.primary),
+                    Icon(
+                      Icons.play_circle_outline,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'Lecture $currentLecture of $totalLectures',
@@ -335,9 +455,11 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
             child: IconButton(
               icon: Icon(
                 Icons.skip_previous,
-                color: _canPlayPrevious() ? Colors.white : Colors.grey[600],
+                color: _canPlayPrevious(course)
+                    ? Colors.white
+                    : Colors.grey[600],
               ),
-              onPressed: _canPlayPrevious()
+              onPressed: _canPlayPrevious(course)
                   ? () => _playPreviousLecture(course)
                   : null,
               iconSize: 22,
@@ -374,7 +496,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: _canPlayNext(course) ? AppColors.primary : Colors.grey[800],
+              color: _canPlayNext(course)
+                  ? AppColors.primary
+                  : Colors.grey[800],
               borderRadius: BorderRadius.circular(8),
             ),
             child: IconButton(
@@ -414,7 +538,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: isCurrentSection ? AppColors.primary : AppColors.secondaryVariant,
+                color: isCurrentSection
+                    ? AppColors.primary
+                    : AppColors.secondaryVariant,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Center(
@@ -444,10 +570,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
             Text(
               '${section.lectures.length}',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[500],
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
             ),
           ],
         ),
@@ -478,7 +601,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
       decoration: BoxDecoration(
-        color: isPlaying ? AppColors.secondaryVariant.withOpacity(0.4) : Colors.white,
+        color: isPlaying
+            ? AppColors.secondaryVariant.withOpacity(0.4)
+            : Colors.white,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: isPlaying ? AppColors.primary : Colors.grey.shade200,
@@ -497,9 +622,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: isPlaying
-                      ? AppColors.primary
-                      : Colors.grey[200],
+                  color: isPlaying ? AppColors.primary : Colors.grey[200],
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -544,9 +667,17 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   }
 
   void _findAndPlayLecture(Course course, String lectureId) {
-    for (int sectionIndex = 0; sectionIndex < course.sections.length; sectionIndex++) {
+    for (
+      int sectionIndex = 0;
+      sectionIndex < course.sections.length;
+      sectionIndex++
+    ) {
       final section = course.sections[sectionIndex];
-      for (int lectureIndex = 0; lectureIndex < section.lectures.length; lectureIndex++) {
+      for (
+        int lectureIndex = 0;
+        lectureIndex < section.lectures.length;
+        lectureIndex++
+      ) {
         if (section.lectures[lectureIndex].id == lectureId) {
           _playLecture(course, sectionIndex, lectureIndex);
           return;
@@ -557,12 +688,38 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   }
 
   void _playFirstAvailableLecture(Course course) {
+    // 1. Check for standard lectures
     for (int i = 0; i < course.sections.length; i++) {
       if (course.sections[i].lectures.isNotEmpty) {
         _playLecture(course, i, 0);
         return;
       }
     }
+
+    // 2. If no lectures, check for Live Classes (Course level or Section level)
+    final allLiveClasses = [
+      ...course.liveClasses,
+      ...course.sections.expand((s) => s.liveClasses),
+    ];
+
+    if (allLiveClasses.isNotEmpty) {
+      // Sort to find the most relevant one (Live > Scheduled soon)
+      allLiveClasses.sort((a, b) {
+        if (a.status == 'LIVE' && b.status != 'LIVE') return -1;
+        if (b.status == 'LIVE' && a.status != 'LIVE') return 1;
+        return a.scheduledAt.compareTo(b.scheduledAt);
+      });
+
+      setState(() {
+        _availableLiveClass = allLiveClasses.first;
+        _isLoadingContent = false;
+      });
+      return;
+    }
+
+    // 3. Fallback to older live class lookup logic (provider) if model didn't have it
+    // (This part matches the existing _loadLecture fallback, but here we are initing)
+    // For now, if no content is found, we just let it sit or show empty state.
   }
 
   Widget _buildError(Object error) {

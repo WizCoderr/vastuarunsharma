@@ -1,3 +1,5 @@
+import 'live_class.dart';
+
 class Resource {
   final String id;
   final String title;
@@ -30,11 +32,13 @@ class Section {
   final String id;
   final String title;
   final List<Lecture> lectures;
+  final List<LiveClass> liveClasses;
 
   const Section({
     required this.id,
     required this.title,
     required this.lectures,
+    this.liveClasses = const [],
   });
 }
 
@@ -50,6 +54,7 @@ class Course {
   final bool? enrolled;
   final List<Section> sections;
   final List<Resource> resources;
+  final List<LiveClass> liveClasses;
 
   const Course({
     required this.id,
@@ -63,5 +68,6 @@ class Course {
     this.enrolled,
     this.sections = const [],
     this.resources = const [],
+    this.liveClasses = const [],
   });
 }
