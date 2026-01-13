@@ -8,6 +8,7 @@ import '../../../domain/entities/live_class.dart';
 
 import '../../providers/course_provider.dart';
 import '../../providers/live_class_provider.dart';
+import '../../../core/services/notification_service.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -50,6 +51,9 @@ class DashboardScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Listen to live classes changes to schedule notifications
+              if (user != null) _LiveClassScheduler(ref: ref),
+
               const SizedBox(height: 12),
               // Today's Live Class Banner
               if (user != null)
@@ -403,7 +407,7 @@ class _LiveClassBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLive = liveClass.status == 'LIVE';
-    
+
     return GestureDetector(
       onTap: () {
         context.push(RouteConstants.courseDetailsPath(liveClass.courseId));
@@ -431,7 +435,10 @@ class _LiveClassBanner extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white24,
                     borderRadius: BorderRadius.circular(8),
@@ -439,11 +446,7 @@ class _LiveClassBanner extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.videocam, 
-                        color: Colors.white, 
-                        size: 16
-                      ),
+                      const Icon(Icons.videocam, color: Colors.white, size: 16),
                       const SizedBox(width: 4),
                       Text(
                         isLive ? "LIVE NOW" : "TODAY",
@@ -465,7 +468,7 @@ class _LiveClassBanner extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                       fontSize: 12,
                     ),
-                  )
+                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -480,10 +483,7 @@ class _LiveClassBanner extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               liveClass.courseName,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -501,7 +501,11 @@ class _LiveClassBanner extends StatelessWidget {
                   disabledBackgroundColor: Colors.white24,
                   disabledForegroundColor: Colors.white38,
                 ),
-                child: Text(isLive ? "Join Class" : "Scheduled @ ${_formatTime(liveClass.scheduledAt)}"),
+                child: Text(
+                  isLive
+                      ? "Join Class"
+                      : "Scheduled @ ${_formatTime(liveClass.scheduledAt)}",
+                ),
               ),
             ),
           ],
@@ -511,9 +515,29 @@ class _LiveClassBanner extends StatelessWidget {
   }
 
   String _formatTime(DateTime dt) {
-    final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final period = dt.hour >= 12 ? 'PM' : 'AM';
+    final localDt = dt.toLocal();
+    final hour = localDt.hour > 12
+        ? localDt.hour - 12
+        : (localDt.hour == 0 ? 12 : localDt.hour);
+    final minute = localDt.minute.toString().padLeft(2, '0');
+    final period = localDt.hour >= 12 ? 'PM' : 'AM';
     return "$hour:$minute $period";
+  }
+}
+
+class _LiveClassScheduler extends StatelessWidget {
+  final WidgetRef ref;
+  const _LiveClassScheduler({required this.ref});
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(todayLiveClassesProvider, (previous, next) {
+      if (next.hasValue && next.value != null) {
+        ref
+            .read(notificationServiceProvider)
+            .scheduleClassNotifications(next.value!);
+      }
+    });
+    return const SizedBox.shrink();
   }
 }

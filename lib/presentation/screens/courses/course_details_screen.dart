@@ -154,15 +154,20 @@ class CourseDetailsScreen extends ConsumerWidget {
               // Upcoming Live Classes Section
               upcomingClassesAsync.when(
                 data: (classes) {
-                  final courseClasses = classes.where((c) => c.courseId == courseId).toList();
+                  final courseClasses = classes
+                      .where((c) => c.courseId == courseId)
+                      .toList();
                   if (courseClasses.isEmpty) return const SizedBox.shrink();
-                  
+
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
                         "Upcoming Live Class",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 10),
                       ...courseClasses.map((c) => _LiveClassTile(liveClass: c)),
@@ -183,7 +188,10 @@ class CourseDetailsScreen extends ConsumerWidget {
                     children: [
                       const Text(
                         "Class Recordings",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 10),
                       ...recordings.map((r) => _RecordingTile(recording: r)),
@@ -386,38 +394,35 @@ class CourseDetailsScreen extends ConsumerWidget {
             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
           ),
           const SizedBox(height: 8),
-          ...section.lectures
-              .map(
-                (lecture) => Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Row(
-                    children: [
-                      Container(
-                        height: 35,
-                        width: 35,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Icon(
-                          Icons.play_arrow,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onPrimaryContainer,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          lecture.title,
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ),
-                    ],
+          ...section.lectures.map(
+            (lecture) => Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  Container(
+                    height: 35,
+                    width: 35,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Icon(
+                      Icons.play_arrow,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      size: 20,
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      lecture.title,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ],
               ),
+            ),
+          ),
         ],
       ),
     );
@@ -563,7 +568,10 @@ class _LiveClassTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   liveClass.title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ],
@@ -579,9 +587,12 @@ class _LiveClassTile extends StatelessWidget {
             child: ElevatedButton(
               onPressed: liveClass.canJoin && liveClass.meetingUrl != null
                   ? () {
-                      launchUrl(Uri.parse(liveClass.meetingUrl!), mode: LaunchMode.externalApplication);
+                      launchUrl(
+                        Uri.parse(liveClass.meetingUrl!),
+                        mode: LaunchMode.externalApplication,
+                      );
                     }
-                  : null, 
+                  : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red.shade600,
                 foregroundColor: Colors.white,
@@ -589,14 +600,15 @@ class _LiveClassTile extends StatelessWidget {
               ),
               child: const Text("Join Class"),
             ),
-          )
+          ),
         ],
       ),
     );
   }
-  
+
   String _formatTime(DateTime dt) {
-    return "${dt.day}/${dt.month} ${dt.hour}:${dt.minute.toString().padLeft(2,'0')}";
+    final localDt = dt.toLocal();
+    return "${localDt.day}/${localDt.month} ${localDt.hour}:${localDt.minute.toString().padLeft(2, '0')}";
   }
 }
 
@@ -608,35 +620,49 @@ class _RecordingTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
-         // Open Video Player - assuming passing courseId logic
-         context.push(RouteConstants.videoPlayerPath(recording.courseId)); 
+        // Open Video Player - assuming passing courseId logic
+        context.push(RouteConstants.videoPlayerPath(recording.courseId));
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-           color: Colors.white,
-           borderRadius: BorderRadius.circular(12),
-           border: Border.all(color: Colors.grey.shade200),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
         ),
         child: Row(
           children: [
-             Container(
-               width: 60, height: 60,
-               decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(8)),
-               child: const Icon(Icons.play_circle_outline, size: 30, color: Colors.black54),
-             ),
-             const SizedBox(width: 12),
-             Expanded(
-               child: Column(
-                 crossAxisAlignment: CrossAxisAlignment.start,
-                 children: [
-                   Text(recording.title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                   Text("${recording.durationMinutes} mins • ${_formatDate(recording.date)}", style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                 ],
-               ),
-             ),
-             const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.play_circle_outline,
+                size: 30,
+                color: Colors.black54,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    recording.title,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    "${recording.durationMinutes} mins • ${_formatDate(recording.date)}",
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
           ],
         ),
       ),
@@ -644,6 +670,7 @@ class _RecordingTile extends StatelessWidget {
   }
 
   String _formatDate(DateTime dt) {
-    return "${dt.day}/${dt.month}/${dt.year}";
+    final localDt = dt.toLocal();
+    return "${localDt.day}/${localDt.month}/${localDt.year}";
   }
 }
