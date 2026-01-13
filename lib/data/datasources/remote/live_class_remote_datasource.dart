@@ -21,7 +21,15 @@ class LiveClassRemoteDataSourceImpl implements LiveClassRemoteDataSource {
     try {
       // response.data is dynamic, standard Dio response
       final response = await _client.get(ApiEndpoints.todayLiveClasses);
-      final List<dynamic> data = response.data['data'] ?? [];
+
+      List<dynamic> data;
+      if (response.data is List) {
+        data = response.data as List<dynamic>;
+      } else if (response.data is Map && response.data['data'] is List) {
+        data = (response.data['data'] as List<dynamic>);
+      } else {
+        data = [];
+      }
       return data.map((e) => LiveClassModel.fromJson(e)).toList();
     } catch (e) {
       rethrow;
@@ -30,9 +38,17 @@ class LiveClassRemoteDataSourceImpl implements LiveClassRemoteDataSource {
 
   @override
   Future<List<LiveClassModel>> getUpcomingLiveClasses() async {
-     try {
+    try {
       final response = await _client.get(ApiEndpoints.upcomingLiveClasses);
-      final List<dynamic> data = response.data['data'] ?? [];
+
+      List<dynamic> data;
+      if (response.data is List) {
+        data = response.data as List<dynamic>;
+      } else if (response.data is Map && response.data['data'] is List) {
+        data = (response.data['data'] as List<dynamic>);
+      } else {
+        data = [];
+      }
       return data.map((e) => LiveClassModel.fromJson(e)).toList();
     } catch (e) {
       rethrow;
@@ -41,9 +57,19 @@ class LiveClassRemoteDataSourceImpl implements LiveClassRemoteDataSource {
 
   @override
   Future<List<RecordingModel>> getCourseRecordings(String courseId) async {
-     try {
-      final response = await _client.get(ApiEndpoints.courseRecordings(courseId));
-      final List<dynamic> data = response.data['data'] ?? [];
+    try {
+      final response = await _client.get(
+        ApiEndpoints.courseRecordings(courseId),
+      );
+
+      List<dynamic> data;
+      if (response.data is List) {
+        data = response.data as List<dynamic>;
+      } else if (response.data is Map && response.data['data'] is List) {
+        data = (response.data['data'] as List<dynamic>);
+      } else {
+        data = [];
+      }
       return data.map((e) => RecordingModel.fromJson(e)).toList();
     } catch (e) {
       rethrow;
@@ -52,11 +78,8 @@ class LiveClassRemoteDataSourceImpl implements LiveClassRemoteDataSource {
 
   @override
   Future<void> registerDeviceToken(String token) async {
-     try {
-      await _client.post(
-        ApiEndpoints.deviceToken,
-        data: {'token': token},
-      );
+    try {
+      await _client.post(ApiEndpoints.deviceToken, data: {'token': token});
     } catch (e) {
       rethrow;
     }
