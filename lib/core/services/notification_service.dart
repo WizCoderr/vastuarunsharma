@@ -29,7 +29,7 @@ class NotificationService {
 
     // Initialize Local Notifications
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/ic_launcher_circle');
 
     final DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(

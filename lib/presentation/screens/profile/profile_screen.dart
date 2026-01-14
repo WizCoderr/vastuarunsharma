@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/route_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
@@ -30,7 +31,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _handleLogout() {
-    // Capture notifier reference before any async operation
     final authNotifier = ref.read(authStateProvider.notifier);
     authNotifier.logout();
   }
@@ -117,24 +117,90 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   // Stats Card
                   _buildStatsCard(
                     context,
-                    enrolledCount: user.enrolledCourseIds.length,
+                    count: user.enrolledCourseIds.length,
                     onTap: () => context.push(RouteConstants.myCourses),
+                    label: 'My Courses',
+                    iconColor: AppColors.primaryVariant,
+                    backgroundColor: AppColors.secondaryVariant,
                   ),
                   const SizedBox(height: 48),
 
+                  // Contact Section
+                  _buildStatsCard(
+                    context,
+                    count: null,
+                    onTap: () => _callWhatsAppChat("+919056012115"),
+                    label: 'Contact Us',
+                    iconColor: AppColors.primaryVariant,
+                    backgroundColor: AppColors.secondaryVariant,
+                  ),
+
+                  const SizedBox(height: 48),
+
                   // Logout Button
-                  SizedBox(
+                  // Logout Button (Updated UI)
+                  Container(
                     width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 32),
                     child: OutlinedButton.icon(
                       onPressed: _handleLogout,
                       icon: const Icon(Icons.logout),
-                      label: const Text('Logout'),
+                      label: const Text(
+                        'Sign Out',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.error,
-                        side: const BorderSide(color: AppColors.error),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(
+                          color: AppColors.error.withOpacity(0.6),
+                          width: 1.5,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                     ),
+                  ),
+                  // Footer
+                  Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 1,
+                            color: Colors.grey.shade300,
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.verified_user,
+                            size: 16,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 40,
+                            height: 1,
+                            color: Colors.grey.shade300,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Vastu Arun Sharma',
+                        style: TextStyle(
+                          fontSize: 12,
+                          letterSpacing: 1.2,
+                          color: Colors.grey.shade500,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -142,22 +208,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildStatsCard(
+  Widget _buildStatsCard<T>(
     BuildContext context, {
-    required int enrolledCount,
+    required T?
+    count, // Optional, can be null or any type (e.g., int, double, String)
     required VoidCallback onTap,
+    required String label, // e.g., "My Courses", "Completed", "Total"
+    IconData? leadingIcon = Icons.school,
+    Color? backgroundColor = AppColors.secondaryVariant,
+    Color? iconColor = AppColors.primaryVariant,
+    TextStyle? labelStyle,
+    TextStyle? countStyle,
+    Color? countColor = AppColors.primary,
+    double? iconSize = 28,
+    double? labelFontSize = 14,
+    double? countFontSize = 28,
+    FontWeight? labelFontWeight = FontWeight.w600,
+    FontWeight? countFontWeight = FontWeight.bold,
+    Color? labelColor = AppColors.onBackground,
+    Color? countColorOverride, // Optional override for count color
   }) {
+    final shouldShowCount = count != null && count != 0;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: backgroundColor ?? AppColors.background,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: AppColors.primary.withOpacity(0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -169,35 +252,49 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.secondaryVariant,
+                color: backgroundColor ?? AppColors.secondaryVariant,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
-                Icons.school,
-                color: AppColors.primaryVariant,
-                size: 28,
-              ),
+              child: Icon(leadingIcon, color: iconColor, size: iconSize ?? 28),
             ),
             const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  '$enrolledCount',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
+                  label,
+                  style:
+                      labelStyle ??
+                      TextStyle(
+                        fontSize: labelFontSize ?? 14,
+                        color: labelColor ?? AppColors.onBackground,
+                        fontWeight: labelFontWeight ?? FontWeight.w600,
+                      ),
                 ),
-                Text(
-                  'Enrolled Courses',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                ),
+                shouldShowCount ? SizedBox(width: 4) : SizedBox.shrink(),
+                shouldShowCount
+                    ? Text(
+                        count.toString(),
+                        style:
+                            countStyle ??
+                            TextStyle(
+                              fontSize: countFontSize ?? 28,
+                              fontWeight: countFontWeight ?? FontWeight.bold,
+                              color:
+                                  countColorOverride ??
+                                  countColor ??
+                                  AppColors.primary,
+                            ),
+                      )
+                    : SizedBox.shrink(),
               ],
             ),
             const Spacer(),
-            Icon(Icons.arrow_forward_ios, size: 18, color: Colors.grey[400]),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 18,
+              color: AppColors.onBackground,
+            ),
           ],
         ),
       ),
@@ -209,11 +306,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
+          Icon(Icons.lock_outline, size: 64, color: AppColors.onBackground),
           const SizedBox(height: 24),
           Text(
             'Please login to view profile',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 16, color: AppColors.onBackground),
           ),
           const SizedBox(height: 24),
           ElevatedButton(
@@ -231,5 +328,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ],
       ),
     );
+  }
+
+  void _callWhatsAppChat(String phoneNumber) {
+    try {
+      final uri = Uri.parse('https://api.whatsapp.com/send?phone=$phoneNumber');
+      launchUrl(uri);
+    } catch (e) {
+      AlertDialog(
+        title: const Text('Error'),
+        content: const Text('Failed to open WhatsApp'),
+        actions: [
+          TextButton(
+            child: const Text('OK'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      );
+    }
   }
 }

@@ -1,268 +1,292 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/route_constants.dart';
 import '../../providers/auth_provider.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../../../domain/entities/live_class.dart';
-
 import '../../providers/course_provider.dart';
 import '../../providers/live_class_provider.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../domain/entities/live_class.dart';
+import '../../../domain/entities/course.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class DashboardScreen extends ConsumerWidget {
+// Color Constants from Design
+class DashboardColors {
+  static const Color background = Color(0xFFFAFAFA); // Off-white background
+  static const Color textPrimary = Color(0xFF1A1A1A);
+  static const Color textSecondary = Color(0xFF757575);
+  static const Color accentGold = Color(0xFFE6B800); // Muted Gold/Mustard
+  static const Color accentGoldLight = Color(0xFFFFF9E6);
+  static const Color accentGreen = Color(0xFF34A853);
+  static const Color accentGreenLight = Color(0xFFE8F5E9);
+  static const Color buttonText = Colors.white;
+}
+
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-reload data every 60 seconds
+    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
+      _refreshData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refreshData() async {
+    final user = ref.read(authStateProvider).value;
+    await Future.wait([
+      ref.refresh(allCoursesProvider.future),
+      ref.refresh(enrolledCoursesProvider.future),
+      if (user != null) ref.refresh(todayLiveClassesProvider.future),
+    ]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final user = authState.value;
-    final allCoursesAsync = ref.watch(allCoursesProvider);
     final enrolledCoursesAsync = ref.watch(enrolledCoursesProvider);
 
-    final todayLiveClassesAsync = user != null
-        ? ref.watch(todayLiveClassesProvider)
-        : const AsyncValue.data(<LiveClass>[]);
+    // Calculate active count
+    final activeCount = enrolledCoursesAsync.asData?.value.length ?? 0;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: Text(
-          user != null
-              ? 'Welcome back, ${user.name.split(" ").first}!'
-              : 'Welcome to Vastu Learning',
-        ),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black,
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          // Refresh all providers
-          await Future.wait([
-            ref.refresh(allCoursesProvider.future),
-            ref.refresh(enrolledCoursesProvider.future),
-            if (user != null) ref.refresh(todayLiveClassesProvider.future),
-          ]);
-          return Future.delayed(const Duration(milliseconds: 500));
-        },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Listen to live classes changes to schedule notifications
-              if (user != null) _LiveClassScheduler(ref: ref),
-
-              const SizedBox(height: 12),
-              // Today's Live Class Banner
-              if (user != null)
-                todayLiveClassesAsync.when(
-                  data: (classes) {
-                    if (classes.isEmpty) return const SizedBox.shrink();
-                    final liveClass = classes.first;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      child: _LiveClassBanner(liveClass: liveClass),
-                    );
-                  },
-                  loading: () => const SizedBox.shrink(),
-                  error: (err, _) => const SizedBox.shrink(),
-                ),
-              // Quick Actions
-              Row(
-                children: [
-                  Expanded(
-                    child: _QuickActionCard(
-                      icon: Icons.school,
-                      title: 'All Courses',
-                      onTap: () => context.push(RouteConstants.courses),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _QuickActionCard(
-                      icon: Icons.book,
-                      title: user != null ? 'My Courses' : 'Browse',
-                      onTap: () => context.push(
-                        user != null
-                            ? RouteConstants.myCourses
-                            : RouteConstants.courses,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Login prompt for guests
-              if (user == null) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Theme.of(context).colorScheme.primary,
-                        Theme.of(context).colorScheme.primary.withOpacity(0.8),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Join Vastu Learning',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Sign in to track your progress and access enrolled courses',
-                        style: TextStyle(fontSize: 14, color: Colors.white70),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          ElevatedButton(
-                            onPressed: () => context.push(RouteConstants.login),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Theme.of(
-                                context,
-                              ).colorScheme.primary,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
-                            ),
-                            child: const Text('Login'),
-                          ),
-                          const SizedBox(width: 12),
-                          TextButton(
-                            onPressed: () =>
-                                context.push(RouteConstants.register),
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Text('Register'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-
-              // My Courses Section (if logged in)
-              if (user != null) ...[
+      backgroundColor: DashboardColors.background,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _refreshData,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Continue Learning',
+                      'Vastu Arun Sharma',
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                        color: DashboardColors.textSecondary,
                       ),
-                    ),
-                    TextButton(
-                      onPressed: () => context.push(RouteConstants.myCourses),
-                      child: const Text('See All'),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                enrolledCoursesAsync.when(
-                  data: (courses) {
-                    if (courses.isEmpty) {
-                      return Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'No enrolled courses yet',
-                            style: TextStyle(color: Colors.black54),
-                          ),
-                        ),
+                const SizedBox(height: 24),
+                if (user != null) ...[
+                  // Listen to live classes changes to schedule notifications
+                  Consumer(
+                    builder: (context, ref, child) {
+                      ref.listen(todayLiveClassesProvider, (previous, next) {
+                        if (next.hasValue && next.value != null) {
+                          ref
+                              .read(notificationServiceProvider)
+                              .scheduleClassNotifications(next.value!);
+                        }
+                      });
+                      return const SizedBox.shrink();
+                    },
+                  ),
+
+                  // Today's Live Class Banner
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final todayLiveClassesAsync = ref.watch(
+                        todayLiveClassesProvider,
                       );
-                    }
-                    return SizedBox(
-                      height: 210,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: courses.take(5).length,
-                        itemBuilder: (context, index) {
-                          final course = courses[index];
-                          return _CourseCard(
-                            course: course,
-                            onTap: () => context.push(
-                              RouteConstants.courseDetailsPath(course.id),
-                            ),
+                      return todayLiveClassesAsync.when(
+                        data: (classes) {
+                          if (classes.isEmpty) return const SizedBox.shrink();
+                          final liveClass = classes.first;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 24),
+                            child: _LiveClassBanner(liveClass: liveClass),
                           );
                         },
-                      ),
-                    );
-                  },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (error, stack) => const SizedBox.shrink(),
-                ),
-                const SizedBox(height: 24),
-              ],
-
-              // All Courses Section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Explore Courses',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        loading: () => const SizedBox.shrink(),
+                        error: (err, _) => const SizedBox.shrink(),
+                      );
+                    },
                   ),
-                  TextButton(
-                    onPressed: () => context.push(RouteConstants.courses),
-                    child: const Text('See All'),
+
+                  RichText(
+                    text: TextSpan(
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: DashboardColors.textPrimary,
+                        height: 1.2,
+                      ),
+                      children: [
+                        const TextSpan(text: 'Welcome back,\n'),
+                        TextSpan(
+                          text: '${user.name.split(" ").first}.',
+                          style: const TextStyle(
+                            color: Color(0xFFDCA000),
+                          ), // Gold color for name
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Let's focus on your goals today.",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: DashboardColors.textSecondary,
+                    ),
+                  ),
+                ] else ...[
+                  // Guest Greeting
+                  RichText(
+                    text: const TextSpan(
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: DashboardColors.textPrimary,
+                        height: 1.2,
+                      ),
+                      children: [
+                        TextSpan(text: 'Welcome,\n'),
+                        TextSpan(
+                          text: 'Guest.',
+                          style: TextStyle(color: Color(0xFFDCA000)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Sign in to start learning.",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: DashboardColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => context.push(RouteConstants.login),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: DashboardColors.accentGold,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                    ),
+                    child: const Text("Login / Register"),
                   ),
                 ],
-              ),
-              const SizedBox(height: 12),
-              allCoursesAsync.when(
-                data: (courses) {
-                  if (courses.isEmpty) {
-                    return const Center(child: Text('No courses available'));
-                  }
-                  return SizedBox(
-                    height: 210,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: courses.take(5).length,
-                      itemBuilder: (context, index) {
-                        final course = courses[index];
-                        return _CourseCard(
-                          course: course,
-                          onTap: () => context.push(
-                            RouteConstants.courseDetailsPath(course.id),
+
+                const SizedBox(height: 32),
+
+                // Enrolled Courses Header
+                if (user != null) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Enrolled Courses',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: DashboardColors.textPrimary,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: DashboardColors.accentGoldLight,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '$activeCount Active',
+                          style: const TextStyle(
+                            color: Color(0xFFB38F00), // Darker gold for text
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Courses List
+                  enrolledCoursesAsync.when(
+                    data: (courses) {
+                      if (courses.isEmpty) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.school_outlined,
+                                  size: 48,
+                                  color: Colors.grey[300],
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  "You haven't enrolled in any courses yet.",
+                                  style: TextStyle(
+                                    color: DashboardColors.textSecondary,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      context.push(RouteConstants.courses),
+                                  child: const Text("Explore Courses"),
+                                ),
+                              ],
+                            ),
                           ),
                         );
-                      },
-                    ),
-                  );
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, _) =>
-                    Center(child: Text('Error: ${error.toString()}')),
-              ),
-            ],
+                      }
+                      return ListView.separated(
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        itemCount: courses.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 16),
+                        itemBuilder: (context, index) {
+                          final course = courses[index];
+                          return _CourseProgressCard(course: course);
+                        },
+                      );
+                    },
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Center(child: Text("Error: $e")),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
@@ -270,130 +294,165 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class _QuickActionCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final VoidCallback onTap;
+class _CourseProgressCard extends StatelessWidget {
+  final Course course;
 
-  const _QuickActionCard({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-  });
+  const _CourseProgressCard({required this.course});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 32, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 8),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-    );
-  }
-}
-
-class _CourseCard extends StatelessWidget {
-  final dynamic course;
-  final VoidCallback onTap;
-
-  const _CourseCard({required this.course, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 160,
-        margin: const EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Course Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Price or Type Tag (Real Data)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: DashboardColors.accentGoldLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  course.price == 0 ? "FREE" : "PAID",
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFB38F00),
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
-              clipBehavior: Clip.antiAlias,
-              child: course.thumbnail.isNotEmpty
-                  ? Image.network(
-                      course.thumbnail,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: 100,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Center(
-                            child: Icon(
-                              Icons.image,
-                              size: 40,
-                              color: Colors.grey,
-                            ),
-                          ),
-                    )
-                  : const Center(
-                      child: Icon(Icons.image, size: 40, color: Colors.grey),
-                    ),
+              // Thumbnail (Real Data)
+              Container(
+                height: 40,
+                width: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: DashboardColors.background,
+                  border: Border.all(color: Colors.grey[100]!),
+                  image: course.thumbnail.isNotEmpty
+                      ? DecorationImage(
+                          image: NetworkImage(course.thumbnail),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: course.thumbnail.isEmpty
+                    ? const Icon(Icons.image, size: 20, color: Colors.grey)
+                    : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Title
+          Text(
+            course.title,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: DashboardColors.textPrimary,
+              height: 1.2,
             ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+          const SizedBox(height: 4),
+          // Instructor Name (Real Data) or Description snippet
+          Text(
+            course.description.isNotEmpty
+                ? course.description
+                : "Start Learning",
+            style: TextStyle(
+              fontSize: 14,
+              color: DashboardColors.textSecondary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 16),
+
+          // Progress Bar (Placeholder 0% as real data is missing)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Progress",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF555555),
+                ),
+              ),
+              const Text(
+                "0%",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFDCA000),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: 0,
+              backgroundColor: Colors.grey[100],
+              color: const Color(0xFFDCA000),
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Action Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                context.push(RouteConstants.courseDetailsPath(course.id));
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFDCA000),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                elevation: 0,
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Icon(Icons.play_arrow_rounded, size: 24),
+                  SizedBox(width: 4),
                   Text(
-                    course.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '₹${course.price.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
+                    "Continue Learning",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -494,7 +553,7 @@ class _LiveClassBanner extends StatelessWidget {
                         final uri = Uri.parse(liveClass.meetingUrl!);
                         launchUrl(uri, mode: LaunchMode.externalApplication);
                       }
-                    : null, // If null, the click passes through? No, disabled button blocks.
+                    : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.red.shade700,
@@ -522,22 +581,5 @@ class _LiveClassBanner extends StatelessWidget {
     final minute = localDt.minute.toString().padLeft(2, '0');
     final period = localDt.hour >= 12 ? 'PM' : 'AM';
     return "$hour:$minute $period";
-  }
-}
-
-class _LiveClassScheduler extends StatelessWidget {
-  final WidgetRef ref;
-  const _LiveClassScheduler({required this.ref});
-
-  @override
-  Widget build(BuildContext context) {
-    ref.listen(todayLiveClassesProvider, (previous, next) {
-      if (next.hasValue && next.value != null) {
-        ref
-            .read(notificationServiceProvider)
-            .scheduleClassNotifications(next.value!);
-      }
-    });
-    return const SizedBox.shrink();
   }
 }

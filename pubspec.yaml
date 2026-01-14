@@ -42,7 +42,7 @@ flutter_native_splash:
   image: assets/images/splash_logo.png
   android: true
   android_12:
-    image: assets/images/vas.png
+    image: assets/images/android-12-icon.png
     color: "#FFFFFF"
   ios: true
   fullscreen: true
