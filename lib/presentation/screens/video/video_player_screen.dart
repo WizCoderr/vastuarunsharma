@@ -11,6 +11,8 @@ import '../../providers/live_class_provider.dart';
 import '../../providers/pip_provider.dart';
 import '../../providers/stream_url_provider.dart';
 import '../../providers/video_player_provider.dart';
+import '../../providers/progress_provider.dart';
+import '../../../data/models/request/progress_update_request.dart';
 import 'live_session_redirect_screen.dart';
 
 class VideoPlayerScreen extends ConsumerStatefulWidget {
@@ -228,6 +230,34 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   Widget build(BuildContext context) {
     final courseAsync = ref.watch(courseDetailsProvider(widget.courseId));
     final isInPipMode = ref.watch(isInPipModeProvider);
+
+    // Listen for video completion
+    ref.listen(videoPlayerProvider, (previous, next) {
+      if (next != null &&
+          next.isCompleted &&
+          (previous == null || !previous.isCompleted)) {
+        if (next.currentLecture != null) {
+          final req = ProgressUpdateRequest(
+            lectureId: next.currentLecture!.id,
+            courseId: widget.courseId,
+            status: 'COMPLETED',
+            watchedDuration: next.position.inSeconds,
+          );
+          debugPrint('Updating progress: ${req.toJson()}');
+          ref
+              .read(progressRemoteDataSourceProvider)
+              .updateProgress(req)
+              .then((_) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Progress saved!')),
+                );
+              })
+              .catchError((e) {
+                debugPrint("Failed to update progress: $e");
+              });
+        }
+      }
+    });
 
     if (isInPipMode) {
       return const Scaffold(

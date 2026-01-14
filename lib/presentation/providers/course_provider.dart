@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../../domain/entities/course.dart';
+import '../../domain/entities/course_curriculum.dart';
 import '../../data/repositories/course_repository_impl.dart';
 import '../../data/datasources/remote/course_remote_datasource.dart';
 import '../../data/datasources/remote/public_course_datasource.dart';
@@ -115,7 +116,9 @@ final allCoursesProvider = FutureProvider<List<Course>>((ref) async {
   }
 
   // Record successful fetch for freshness tracking
-  ref.read(freshnessManagerProvider.notifier).recordFetch(ProviderKeys.allCourses);
+  ref
+      .read(freshnessManagerProvider.notifier)
+      .recordFetch(ProviderKeys.allCourses);
 
   return courses;
 });
@@ -131,7 +134,9 @@ final enrolledCoursesProvider = FutureProvider<List<Course>>((ref) async {
   );
 
   // Record successful fetch for freshness tracking
-  ref.read(freshnessManagerProvider.notifier).recordFetch(ProviderKeys.enrolledCourses);
+  ref
+      .read(freshnessManagerProvider.notifier)
+      .recordFetch(ProviderKeys.enrolledCourses);
 
   return courses;
 });
@@ -160,9 +165,9 @@ final courseDetailsProvider = FutureProvider.family<Course, String>((
   }
 
   // Record successful fetch for freshness tracking
-  ref.read(freshnessManagerProvider.notifier).recordFetch(
-    ProviderKeys.courseDetailsKey(courseId),
-  );
+  ref
+      .read(freshnessManagerProvider.notifier)
+      .recordFetch(ProviderKeys.courseDetailsKey(courseId));
 
   return course;
 });
@@ -210,15 +215,13 @@ Course _mapFromResponse(CourseResponse r) {
 }
 
 // Course Curriculum Provider
-final courseCurriculumProvider = FutureProvider.family<dynamic, String>((
-  ref,
-  courseId,
-) async {
-  final repository = ref.watch(courseRepositoryProvider);
-  final result = await repository.getCourseCurriculum(courseId);
+final courseCurriculumProvider =
+    FutureProvider.family<CourseCurriculum, String>((ref, courseId) async {
+      final repository = ref.watch(courseRepositoryProvider);
+      final result = await repository.getCourseCurriculum(courseId);
 
-  return result.fold(
-    (failure) => throw Exception(failure.message),
-    (curriculum) => curriculum,
-  );
-});
+      return result.fold(
+        (failure) => throw Exception(failure.message),
+        (curriculum) => curriculum,
+      );
+    });

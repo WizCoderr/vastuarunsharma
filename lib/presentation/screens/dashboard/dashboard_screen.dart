@@ -294,13 +294,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 }
 
-class _CourseProgressCard extends StatelessWidget {
+class _CourseProgressCard extends ConsumerWidget {
   final Course course;
 
   const _CourseProgressCard({required this.course});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final curriculumAsync = ref.watch(courseCurriculumProvider(course.id));
+    final progress = curriculumAsync.asData?.value.progress ?? 0.0;
+    final percent = (progress * 100).toInt();
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -389,7 +393,7 @@ class _CourseProgressCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Progress Bar (Placeholder 0% as real data is missing)
+          // Progress Bar
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -401,9 +405,9 @@ class _CourseProgressCard extends StatelessWidget {
                   color: Color(0xFF555555),
                 ),
               ),
-              const Text(
-                "0%",
-                style: TextStyle(
+              Text(
+                "$percent%",
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFFDCA000),
@@ -415,7 +419,7 @@ class _CourseProgressCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: 0,
+              value: progress,
               backgroundColor: Colors.grey[100],
               color: const Color(0xFFDCA000),
               minHeight: 6,

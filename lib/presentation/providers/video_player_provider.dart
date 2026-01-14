@@ -15,6 +15,7 @@ class VideoPlayerState {
   final Duration duration;
   final double volume;
   final bool isFullscreen;
+  final bool isCompleted;
   final String? errorMessage;
 
   VideoPlayerState({
@@ -27,6 +28,7 @@ class VideoPlayerState {
     this.duration = Duration.zero,
     this.volume = 1.0,
     this.isFullscreen = false,
+    this.isCompleted = false,
     this.errorMessage,
   });
 
@@ -40,6 +42,7 @@ class VideoPlayerState {
     Duration? duration,
     double? volume,
     bool? isFullscreen,
+    bool? isCompleted,
     String? errorMessage,
   }) {
     return VideoPlayerState(
@@ -52,6 +55,7 @@ class VideoPlayerState {
       duration: duration ?? this.duration,
       volume: volume ?? this.volume,
       isFullscreen: isFullscreen ?? this.isFullscreen,
+      isCompleted: isCompleted ?? this.isCompleted,
       errorMessage: errorMessage,
     );
   }
@@ -104,6 +108,13 @@ class VideoPlayerNotifier extends Notifier<VideoPlayerState?> {
     // Playing state
     _player!.stream.playing.listen((playing) {
       state = state?.copyWith(isPlaying: playing);
+    });
+
+    // Completed state
+    _player!.stream.completed.listen((completed) {
+      if (completed) {
+        state = state?.copyWith(isCompleted: true, isPlaying: false);
+      }
     });
 
     // Buffering state
@@ -211,6 +222,7 @@ class VideoPlayerNotifier extends Notifier<VideoPlayerState?> {
     state = state?.copyWith(
       currentLecture: lecture,
       isBuffering: true,
+      isCompleted: false,
       errorMessage: null,
     );
 

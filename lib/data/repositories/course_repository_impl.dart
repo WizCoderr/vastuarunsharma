@@ -1,9 +1,11 @@
 import 'package:vastu_mobile/shared/utils/either.dart';
 import '../../domain/entities/course.dart' as entity;
+import '../../domain/entities/course_curriculum.dart' as entity_curriculum;
 import '../../domain/entities/live_class.dart' as entity_live;
 import '../../domain/repositories/course_repository.dart';
 import '../datasources/remote/course_remote_datasource.dart';
 import '../models/response/course_response.dart';
+import '../models/response/curriculum_response.dart' as response_curriculum;
 import '../../core/errors/failures.dart';
 
 class CourseRepositoryImpl implements CourseRepository {
@@ -45,10 +47,11 @@ class CourseRepositoryImpl implements CourseRepository {
   }
 
   @override
-  Future<Either<Failure, dynamic>> getCourseCurriculum(String courseId) async {
+  Future<Either<Failure, entity_curriculum.CourseCurriculum>>
+  getCourseCurriculum(String courseId) async {
     try {
       final curr = await remote.fetchCourseCurriculum(courseId);
-      return Right(curr);
+      return Right(_mapCurriculum(curr));
     } on Exception catch (e) {
       return Left(NetworkFailure(e.toString()));
     }
@@ -100,4 +103,31 @@ class CourseRepositoryImpl implements CourseRepository {
         canJoin: l.canJoin,
         startsIn: l.startsIn,
       );
+
+  entity_curriculum.CourseCurriculum _mapCurriculum(
+    response_curriculum.CurriculumResponse r,
+  ) => entity_curriculum.CourseCurriculum(
+    courseId: r.courseId,
+    progress: r.progress,
+    sections: r.sections.map((s) => _mapSectionFromCurriculum(s)).toList(),
+    liveClasses: [], // Initially empty
+  );
+
+  entity.Section _mapSectionFromCurriculum(
+    response_curriculum.SectionResponse s,
+  ) => entity.Section(
+    id: s.id,
+    title: s.title,
+    lectures: s.lectures.map((l) => _mapLectureFromCurriculum(l)).toList(),
+    liveClasses: [],
+  );
+
+  entity.Lecture _mapLectureFromCurriculum(
+    response_curriculum.LectureResponse l,
+  ) => entity.Lecture(
+    id: l.id,
+    title: l.title,
+    videoUrl: '', // Curriculum response might not provide video URL
+    videoProvider: '',
+  );
 }

@@ -44,13 +44,19 @@ class SectionResponse {
 
 class CurriculumResponse {
   final String courseId;
+  final double progress;
   final List<SectionResponse> sections;
 
-  CurriculumResponse({required this.courseId, required this.sections});
+  CurriculumResponse({
+    required this.courseId,
+    required this.progress,
+    required this.sections,
+  });
 
   factory CurriculumResponse.fromJson(Map<String, dynamic> json) =>
       CurriculumResponse(
         courseId: json['courseId'] as String? ?? '',
+        progress: (json['progress'] as num?)?.toDouble() ?? 0.0,
         sections:
             (json['sections'] as List<dynamic>?)
                 ?.map(
