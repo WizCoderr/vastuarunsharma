@@ -1,13 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../../domain/entities/course.dart';
 
 /// State class for video player
 class VideoPlayerState {
-  final Player player;
-  final VideoController controller;
+  final YoutubePlayerController? controller;
   final Lecture? currentLecture;
   final bool isBuffering;
   final bool isPlaying;
@@ -19,22 +17,20 @@ class VideoPlayerState {
   final String? errorMessage;
 
   VideoPlayerState({
-    required this.player,
-    required this.controller,
+    this.controller,
     this.currentLecture,
     this.isBuffering = false,
     this.isPlaying = false,
     this.position = Duration.zero,
     this.duration = Duration.zero,
-    this.volume = 1.0,
+    this.volume = 100.0,
     this.isFullscreen = false,
     this.isCompleted = false,
     this.errorMessage,
   });
 
   VideoPlayerState copyWith({
-    Player? player,
-    VideoController? controller,
+    YoutubePlayerController? controller,
     Lecture? currentLecture,
     bool? isBuffering,
     bool? isPlaying,
@@ -46,7 +42,6 @@ class VideoPlayerState {
     String? errorMessage,
   }) {
     return VideoPlayerState(
-      player: player ?? this.player,
       controller: controller ?? this.controller,
       currentLecture: currentLecture ?? this.currentLecture,
       isBuffering: isBuffering ?? this.isBuffering,
@@ -63,105 +58,93 @@ class VideoPlayerState {
 
 /// Notifier for video player state management
 class VideoPlayerNotifier extends Notifier<VideoPlayerState?> {
-  Player? _player;
-  VideoController? _controller;
+  YoutubePlayerController? _controller;
 
   @override
   VideoPlayerState? build() {
     ref.onDispose(() {
-      _player?.dispose();
+      _controller?.dispose();
     });
     return null;
   }
 
   /// Initialize the player with a video URL
-  Future<void> initialize(String videoUrl, Lecture lecture) async {
-    // Dispose existing player if any
-    await disposePlayer();
+  void initialize(String videoUrl, Lecture lecture) {
+    // Extract ID
+    final videoId = YoutubePlayer.convertUrlToId(videoUrl);
+    if (videoId == null) {
+      state = VideoPlayerState(
+        errorMessage: 'Invalid YouTube URL',
+        currentLecture: lecture,
+      );
+      return;
+    }
 
-    // Create new player
-    _player = Player();
-    _controller = VideoController(_player!);
+    // Dispose existing if any
+    _controller?.dispose();
 
+    // Create new controller
+    _controller = YoutubePlayerController(
+      initialVideoId: videoId,
+      flags: const YoutubePlayerFlags(
+        autoPlay: true,
+        mute: false,
+        enableCaption: false,
+      ),
+    );
+
+    // Initial state
     state = VideoPlayerState(
-      player: _player!,
-      controller: _controller!,
+      controller: _controller,
       currentLecture: lecture,
       isBuffering: true,
     );
 
-    // Listen to player streams
     _setupListeners();
-
-    // Open the media
-    try {
-      await _player!.open(Media(videoUrl));
-    } catch (e) {
-      state = state?.copyWith(
-        errorMessage: 'Failed to load video: ${e.toString()}',
-        isBuffering: false,
-      );
-    }
   }
 
   void _setupListeners() {
-    // Playing state
-    _player!.stream.playing.listen((playing) {
-      state = state?.copyWith(isPlaying: playing);
-    });
+    _controller?.addListener(() {
+      if (_controller == null || !_controller!.value.isReady) return;
 
-    // Completed state
-    _player!.stream.completed.listen((completed) {
-      if (completed) {
-        state = state?.copyWith(isCompleted: true, isPlaying: false);
-      }
-    });
+      final value = _controller!.value;
 
-    // Buffering state
-    _player!.stream.buffering.listen((buffering) {
-      state = state?.copyWith(isBuffering: buffering);
-    });
+      // Check for completion
+      // YoutubePlayerController doesn't have a direct 'completed' event stream in the same way,
+      // but we can check playerState.
+      final isEnded = value.playerState == PlayerState.ended;
 
-    // Position
-    _player!.stream.position.listen((position) {
-      state = state?.copyWith(position: position);
-    });
-
-    // Duration
-    _player!.stream.duration.listen((duration) {
-      state = state?.copyWith(duration: duration);
-    });
-
-    // Volume
-    _player!.stream.volume.listen((volume) {
-      state = state?.copyWith(volume: volume / 100);
-    });
-
-    // Errors
-    _player!.stream.error.listen((error) {
-      if (error.isNotEmpty) {
-        state = state?.copyWith(errorMessage: error);
-      }
+      state = state?.copyWith(
+        isPlaying: value.isPlaying,
+        isBuffering: value.playerState == PlayerState.buffering,
+        position: value.position,
+        duration: value.metaData.duration,
+        volume: value.volume.toDouble(),
+        // Check fullscreen from controller?? No, usually managed by UI wrapper in flutter youtube player
+        // But we store it here for UI sync
+        isCompleted: isEnded,
+        errorMessage: value.hasError
+            ? 'Playback Error: ${value.errorCode}'
+            : null,
+      );
     });
   }
 
-  /// Play the video
   void play() {
-    _player?.play();
+    _controller?.play();
   }
 
-  /// Pause the video
   void pause() {
-    _player?.pause();
+    _controller?.pause();
   }
 
-  /// Stop the video
-  Future<void> stop() async {
-    await _player?.stop();
+  void stop() {
+    _controller?.pause();
+    // Youtube player doesn't have stop? usually pause and seek to 0
+    _controller?.seekTo(Duration.zero);
     state = state?.copyWith(isPlaying: false, position: Duration.zero);
   }
 
-  /// Toggle play/pause
   void togglePlayPause() {
     if (state?.isPlaying ?? false) {
       pause();
@@ -170,76 +153,46 @@ class VideoPlayerNotifier extends Notifier<VideoPlayerState?> {
     }
   }
 
-  /// Seek to position
   void seek(Duration position) {
-    _player?.seek(position);
+    _controller?.seekTo(position);
   }
 
-  /// Seek forward by seconds
   void seekForward(int seconds) {
-    final currentPosition = state?.position ?? Duration.zero;
-    final duration = state?.duration ?? Duration.zero;
-    final newPosition = currentPosition + Duration(seconds: seconds);
-    if (newPosition < duration) {
-      seek(newPosition);
-    } else {
-      seek(duration);
-    }
+    final current = state?.position ?? Duration.zero;
+    final total = state?.duration ?? Duration.zero;
+    final newPos = current + Duration(seconds: seconds);
+    seek(newPos < total ? newPos : total);
   }
 
-  /// Seek backward by seconds
   void seekBackward(int seconds) {
-    final currentPosition = state?.position ?? Duration.zero;
-    final newPosition = currentPosition - Duration(seconds: seconds);
-    if (newPosition > Duration.zero) {
-      seek(newPosition);
-    } else {
-      seek(Duration.zero);
-    }
+    final current = state?.position ?? Duration.zero;
+    final newPos = current - Duration(seconds: seconds);
+    seek(newPos > Duration.zero ? newPos : Duration.zero);
   }
 
-  /// Set volume (0.0 to 1.0)
   void setVolume(double volume) {
-    _player?.setVolume(volume * 100);
+    _controller?.setVolume(volume.toInt());
   }
 
-  /// Toggle mute
   void toggleMute() {
     if ((state?.volume ?? 0) > 0) {
-      setVolume(0);
+      _controller?.mute();
     } else {
-      setVolume(1.0);
+      _controller?.unMute();
+      setVolume(100);
     }
   }
 
-  /// Set fullscreen state
   void setFullscreen(bool isFullscreen) {
     state = state?.copyWith(isFullscreen: isFullscreen);
   }
 
-  /// Change lecture
-  Future<void> changeLecture(String videoUrl, Lecture lecture) async {
-    state = state?.copyWith(
-      currentLecture: lecture,
-      isBuffering: true,
-      isCompleted: false,
-      errorMessage: null,
-    );
-
-    try {
-      await _player?.open(Media(videoUrl));
-    } catch (e) {
-      state = state?.copyWith(
-        errorMessage: 'Failed to load video: ${e.toString()}',
-        isBuffering: false,
-      );
-    }
+  void reload(String videoUrl, Lecture lecture) {
+    initialize(videoUrl, lecture);
   }
 
-  /// Dispose the player
-  Future<void> disposePlayer() async {
-    await _player?.dispose();
-    _player = null;
+  void disposePlayer() {
+    _controller?.dispose();
     _controller = null;
     state = null;
   }

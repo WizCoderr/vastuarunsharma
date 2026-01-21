@@ -50,159 +50,174 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
       body: user == null
           ? _buildGuestView(context)
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  // Avatar
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withOpacity(0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: CircleAvatar(
-                      radius: 56,
-                      backgroundColor: AppColors.primary,
-                      backgroundImage: NetworkImage(_getAvatarUrl(user.name)),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Name
-                  Text(
-                    user.name,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.onBackground,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 6),
-
-                  // Email
-                  Text(
-                    user.email,
-                    style: TextStyle(fontSize: 15, color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Role Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      user.role[0].toUpperCase() + user.role.substring(1),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.onSecondary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Stats Card
-                  _buildStatsCard(
-                    context,
-                    count: user.enrolledCourseIds.length,
-                    onTap: () => context.push(RouteConstants.myCourses),
-                    label: 'My Courses',
-                    iconColor: AppColors.primaryVariant,
-                    backgroundColor: AppColors.secondaryVariant,
-                  ),
-                  const SizedBox(height: 48),
-
-                  // Contact Section
-                  _buildStatsCard(
-                    context,
-                    count: null,
-                    onTap: () => _callWhatsAppChat("+919056012115"),
-                    label: 'Contact Us',
-                    iconColor: AppColors.primaryVariant,
-                    backgroundColor: AppColors.secondaryVariant,
-                  ),
-
-                  const SizedBox(height: 48),
-
-                  // Logout Button
-                  // Logout Button (Updated UI)
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 32),
-                    child: OutlinedButton.icon(
-                      onPressed: _handleLogout,
-                      icon: const Icon(Icons.logout),
-                      label: const Text(
-                        'Sign Out',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.error,
-                        side: BorderSide(
-                          color: AppColors.error.withOpacity(0.6),
-                          width: 1.5,
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Footer
-                  Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 1,
-                            color: Colors.grey.shade300,
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(
-                            Icons.verified_user,
-                            size: 16,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 40,
-                            height: 1,
-                            color: Colors.grey.shade300,
+          : RefreshIndicator(
+              onRefresh: () async {
+                // Refresh auth state - effectively re-fetches user details
+                return ref.read(authStateProvider.notifier).checkAuthStatus();
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    // Avatar
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.3),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      child: CircleAvatar(
+                        radius: 56,
+                        backgroundColor: AppColors.primary,
+                        backgroundImage: NetworkImage(_getAvatarUrl(user.name)),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Name
+                    Text(
+                      user.name,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.onBackground,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Email
+                    Text(
+                      user.email,
+                      style: TextStyle(fontSize: 15, color: Colors.grey[600]),
+                    ),
+                    if (user.mobileNumber != null &&
+                        user.mobileNumber!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
                       Text(
-                        'Vastu Arun Sharma',
-                        style: TextStyle(
-                          fontSize: 12,
-                          letterSpacing: 1.2,
-                          color: Colors.grey.shade500,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        user.mobileNumber!,
+                        style: TextStyle(fontSize: 15, color: Colors.grey[600]),
                       ),
                     ],
-                  ),
-                ],
+                    const SizedBox(height: 12),
+
+                    // Role Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        user.role[0].toUpperCase() + user.role.substring(1),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.onSecondary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Stats Card
+                    _buildStatsCard(
+                      context,
+                      count: user.enrolledCourseIds.length,
+                      onTap: () => context.push(RouteConstants.myCourses),
+                      label: 'My Courses',
+                      iconColor: AppColors.primaryVariant,
+                      backgroundColor: AppColors.secondaryVariant,
+                    ),
+                    const SizedBox(height: 48),
+
+                    // Contact Section
+                    _buildStatsCard(
+                      context,
+                      count: null,
+                      onTap: () => _callWhatsAppChat("+919056012115"),
+                      label: 'Contact Us',
+                      iconColor: AppColors.primaryVariant,
+                      backgroundColor: AppColors.secondaryVariant,
+                    ),
+
+                    const SizedBox(height: 48),
+
+                    // Logout Button
+                    // Logout Button (Updated UI)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 32),
+                      child: OutlinedButton.icon(
+                        onPressed: _handleLogout,
+                        icon: const Icon(Icons.logout),
+                        label: const Text(
+                          'Sign Out',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                          side: BorderSide(
+                            color: AppColors.error.withOpacity(0.6),
+                            width: 1.5,
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Footer
+                    Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 1,
+                              color: Colors.grey.shade300,
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.verified_user,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 40,
+                              height: 1,
+                              color: Colors.grey.shade300,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Vastu Arun Sharma',
+                          style: TextStyle(
+                            fontSize: 12,
+                            letterSpacing: 1.2,
+                            color: Colors.grey.shade500,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
     );

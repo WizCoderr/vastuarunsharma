@@ -10,8 +10,16 @@ class AuthRepository {
   AuthRepository(this._storageService, this._remoteDataSource);
 
   //  Login
-  Future<UserModel> login(String email, String password) async {
-    final response = await _remoteDataSource.login(email, password);
+  Future<UserModel> login(
+    String email,
+    String password, [
+    String? mobileNumber,
+  ]) async {
+    final response = await _remoteDataSource.login(
+      email,
+      password,
+      mobileNumber,
+    );
 
     // Persist
     await _storageService.saveToken(response.token);
@@ -21,8 +29,18 @@ class AuthRepository {
   }
 
   // Register
-  Future<UserModel> register(String email, String password, String name) async {
-    final response = await _remoteDataSource.register(email, password, name);
+  Future<UserModel> register(
+    String email,
+    String password,
+    String name,
+    String mobileNumber,
+  ) async {
+    final response = await _remoteDataSource.register(
+      email,
+      password,
+      name,
+      mobileNumber,
+    );
 
     // Persist
     await _storageService.saveToken(response.token);
@@ -32,7 +50,18 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
+    try {
+      await _remoteDataSource.logout();
+    } catch (_) {
+      // Ignore remote logout failure, ensure local cleanup happens
+    }
     await _storageService.clearAuth();
+  }
+
+  Future<UserModel> updateProfile(Map<String, dynamic> data) async {
+    final updatedUser = await _remoteDataSource.updateProfile(data);
+    await _storageService.saveUser(updatedUser);
+    return updatedUser;
   }
 
   Future<bool> checkAuthStatus() async {

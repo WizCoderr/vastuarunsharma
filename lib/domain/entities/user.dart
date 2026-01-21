@@ -4,6 +4,7 @@ class User {
   final String name;
   final String role;
   final String? profileImage;
+  final String? mobileNumber;
   final List<String> enrolledCourseIds;
 
   const User({
@@ -12,6 +13,7 @@ class User {
     required this.name,
     this.role = 'student',
     this.profileImage,
+    this.mobileNumber,
     this.enrolledCourseIds = const [],
   });
 

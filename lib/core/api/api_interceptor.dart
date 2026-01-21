@@ -34,11 +34,27 @@ class ApiInterceptor extends Interceptor {
   }
 
   @override
-  void onResponse(Response response, ResponseInterceptorHandler handler) {
+  void onResponse(Response response, ResponseInterceptorHandler handler) async {
     if (kDebugMode) {
       debugPrint('<-- ${response.statusCode} ${response.requestOptions.uri}');
       debugPrint('Response: ${response.data}');
     }
+
+    if (response.statusCode == 401) {
+      // Handle 401 gracefully without Dio throwing first
+      try {
+        await storage.clearAuth();
+      } catch (_) {}
+
+      return handler.reject(
+        DioException(
+          requestOptions: response.requestOptions,
+          error: AuthException('Unauthorized'),
+          response: response,
+        ),
+      );
+    }
+
     return handler.next(response);
   }
 

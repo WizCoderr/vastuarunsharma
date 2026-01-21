@@ -4,9 +4,10 @@ class ApiEndpoints {
   static const String login = '/auth/login';
   static const String register = '/auth/register';
   static const String logout = '/api/student/logout';
+  static const String profile = '/api/student/profile';
   //Public API
   static const String publicCourses = '/api/public/courses';
-    static String publiccourseDetails(String id) => '/api/public/courses/$id';
+  static String publiccourseDetails(String id) => '/api/public/courses/$id';
 
   // Courses (Student)
   static const String courses = '/api/student/courses';
@@ -17,8 +18,10 @@ class ApiEndpoints {
 
   // Live Classes
   static const String todayLiveClasses = '/api/student/live-classes/today';
-  static const String upcomingLiveClasses = '/api/student/live-classes/upcoming';
-  static String courseRecordings(String courseId) => '/api/student/course/$courseId/recordings';
+  static const String upcomingLiveClasses =
+      '/api/student/live-classes/upcoming';
+  static String courseRecordings(String courseId) =>
+      '/api/student/course/$courseId/recordings';
 
   // Notifications
   static const String deviceToken = '/api/student/device-token';
@@ -27,9 +30,10 @@ class ApiEndpoints {
   static const String updateProgress = '/api/student/progress/update';
 
   // Lectures
-  static String lectureStreamUrl(String lectureId) =>'/api/student/lectures/$lectureId/stream-url';
+  static String lectureStreamUrl(String lectureId) =>
+      '/api/student/lectures/$lectureId/stream-url';
 
-  // Payments 
-  static const String createrazorpayorder ='/api/payments/razorpay/order';
-  static const String verifyPayment ='/api/payments/razorpay/verify';
+  // Payments
+  static const String createrazorpayorder = '/api/payments/razorpay/order';
+  static const String verifyPayment = '/api/payments/razorpay/verify';
 }

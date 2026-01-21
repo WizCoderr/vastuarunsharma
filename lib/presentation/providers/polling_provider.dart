@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../../core/services/app_lifecycle_service.dart';
 import '../../core/services/data_freshness_manager.dart';
+import '../../core/errors/failures.dart';
 import '../../domain/entities/course.dart';
 import 'course_provider.dart';
 
@@ -73,6 +74,10 @@ class EnrolledCoursesPollingManager extends Notifier<bool> {
         (failure) {
           // Don't update on error, keep existing data
           debugPrint('Polling failed: ${failure.message}');
+          if (failure is AuthFailure) {
+            debugPrint('Polling stopped due to auth failure');
+            stopPolling();
+          }
         },
         (newCourses) {
           // Compare with current data
@@ -144,5 +149,5 @@ class EnrolledCoursesPollingManager extends Notifier<bool> {
 /// Polling manager provider
 final enrolledCoursesPollingProvider =
     NotifierProvider<EnrolledCoursesPollingManager, bool>(() {
-  return EnrolledCoursesPollingManager();
-});
+      return EnrolledCoursesPollingManager();
+    });

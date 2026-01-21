@@ -7,6 +7,7 @@ class UserModel extends User {
     required super.name,
     super.role,
     super.profileImage,
+    super.mobileNumber,
     super.enrolledCourseIds,
   });
 
@@ -17,6 +18,7 @@ class UserModel extends User {
       name: json['name'] as String,
       role: json['role'] as String? ?? 'student',
       profileImage: json['profileImage'] as String?,
+      mobileNumber: json['mobileNumber'] as String?,
       enrolledCourseIds:
           (json['enrolledCourseIds'] as List<dynamic>?)
               ?.map((e) => e as String)
@@ -32,6 +34,7 @@ class UserModel extends User {
       'name': name,
       'role': role,
       'profileImage': profileImage,
+      'mobileNumber': mobileNumber,
       'enrolledCourseIds': enrolledCourseIds,
     };
   }

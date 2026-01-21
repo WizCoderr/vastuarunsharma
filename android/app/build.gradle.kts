@@ -1,10 +1,20 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
 }
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+
+if (!keystorePropertiesFile.exists()) {
+    error("keystore.properties not found at: ${keystorePropertiesFile.absolutePath}")
+}
+
+keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 
 android {
     namespace = "com.vastuarunsharma.vastu_mobile"
@@ -22,20 +32,38 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.vastuarunsharma.vastu_mobile"
-        // Razorpay requires minSdk 19
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
+    signingConfigs {
+        create("release") {
+            val keyAliasProp = keystoreProperties["keyAlias"]?.toString()?.trim()
+            val keyPasswordProp = keystoreProperties["keyPassword"]?.toString()?.trim()
+            val storeFileProp = keystoreProperties["storeFile"]?.toString()?.trim()
+            val storePasswordProp = keystoreProperties["storePassword"]?.toString()?.trim()
 
+            require(!keyAliasProp.isNullOrBlank()) { "Missing keyAlias in keystore.properties" }
+            require(!keyPasswordProp.isNullOrBlank()) { "Missing keyPassword in keystore.properties" }
+            require(!storeFileProp.isNullOrBlank()) { "Missing storeFile in keystore.properties" }
+            require(!storePasswordProp.isNullOrBlank()) { "Missing storePassword in keystore.properties" }
+
+            val keystoreFile = rootProject.file(storeFileProp)
+            require(keystoreFile.exists()) {
+                "Keystore file not found at: ${keystoreFile.absolutePath}"
+            }
+
+            keyAlias = keyAliasProp
+            keyPassword = keyPasswordProp
+            storeFile = keystoreFile
+            storePassword = storePasswordProp
+        }
+    }
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -49,4 +77,9 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}
+tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.add("-Xlint:-options")
+    options.compilerArgs.add("-Xlint:-deprecation")
+    options.compilerArgs.add("-Xlint:-unchecked")
 }

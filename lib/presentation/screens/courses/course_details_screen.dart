@@ -43,220 +43,244 @@ class CourseDetailsScreen extends ConsumerWidget {
         ),
       ),
       body: courseAsync.when(
-        data: (course) => SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image Banner
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: course.thumbnail.isNotEmpty
-                    ? Image.network(
-                        course.thumbnail,
-                        height: 200,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
+        data: (course) => RefreshIndicator(
+          onRefresh: () async {
+            await Future.wait([
+              ref.refresh(courseDetailsProvider(courseId).future),
+              ref.refresh(upcomingLiveClassesProvider.future),
+              ref.refresh(courseRecordingsProvider(courseId).future),
+            ]);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image Banner
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: course.thumbnail.isNotEmpty
+                      ? Image.network(
+                          course.thumbnail,
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                height: 200,
+                                color: Colors.grey[200],
+                                child: const Icon(
+                                  Icons.image_not_supported,
+                                  size: 50,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                        )
+                      : Container(
                           height: 200,
                           color: Colors.grey[200],
                           child: const Icon(
-                            Icons.image_not_supported,
+                            Icons.image,
                             size: 50,
                             color: Colors.grey,
                           ),
                         ),
-                      )
-                    : Container(
-                        height: 200,
-                        color: Colors.grey[200],
-                        child: const Icon(
-                          Icons.image,
-                          size: 50,
-                          color: Colors.grey,
-                        ),
-                      ),
-              ),
-              // Course Title
-              Text(
-                course.title,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  height: 1.3,
                 ),
-              ),
-              const SizedBox(height: 12),
-              // Instructor Info
-              Row(
-                children: [
-                  const CircleAvatar(
-                    radius: 20,
-                    backgroundImage: AssetImage('assets/images/instructor.png'),
+                // Course Title
+                Text(
+                  course.title,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    height: 1.3,
                   ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "INSTRUCTOR",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
-                          letterSpacing: .5,
+                ),
+                const SizedBox(height: 12),
+                // Instructor Info
+                Row(
+                  children: [
+                    const CircleAvatar(
+                      radius: 20,
+                      backgroundImage: AssetImage(
+                        'assets/images/instructor.png',
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "INSTRUCTOR",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                            letterSpacing: .5,
+                          ),
                         ),
+                        Text(
+                          course.instructorId == "6951a43ae20339f19833f2b1"
+                              ? "Arun Sharma"
+                              : "Vastu Expert",
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    const Icon(Icons.star, color: Colors.amber, size: 20),
+                    const Text(
+                      " 4.8 ",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
                       ),
-                      Text(
-                        course.instructorId == "6951a43ae20339f19833f2b1"
-                            ? "Arun Sharma"
-                            : "Vastu Expert",
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const Text(
+                      "(120)",
+                      style: TextStyle(color: Colors.black54),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+
+                // Course Stats
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _infoTile(
+                      Icons.access_time,
+                      "${course.sections.fold<int>(0, (sum, s) => sum + s.lectures.length)} hrs",
+                      "Duration",
+                      context,
+                    ),
+                    _infoTile(
+                      Icons.menu_book_rounded,
+                      "${course.sections.length} Modules",
+                      "Lessons",
+                      context,
+                    ),
+                    _infoTile(
+                      Icons.verified,
+                      course.enrolled == true ? "Enrolled" : "Available",
+                      "Status",
+                      context,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Upcoming Live Classes Section
+                upcomingClassesAsync.when(
+                  data: (classes) {
+                    final courseClasses = classes
+                        .where((c) => c.courseId == courseId)
+                        .toList();
+                    if (courseClasses.isEmpty) return const SizedBox.shrink();
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Upcoming Live Class",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ...courseClasses.map(
+                          (c) => _LiveClassTile(liveClass: c),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (error, stack) => const SizedBox.shrink(),
+                ),
+
+                // Recordings Section
+                recordingsAsync.when(
+                  data: (recordings) {
+                    if (recordings.isEmpty) return const SizedBox.shrink();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Class Recordings",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ...recordings.map((r) => _RecordingTile(recording: r)),
+                        const SizedBox(height: 24),
+                      ],
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (error, stack) => const SizedBox.shrink(),
+                ),
+
+                // About Course
+                const Text(
+                  "About this Course",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  course.description,
+                  style: const TextStyle(height: 1.45, color: Colors.black87),
+                ),
+                const SizedBox(height: 28),
+
+                // Curriculum Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Curriculum",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
                       ),
-                    ],
-                  ),
-                  const Spacer(),
-                  const Icon(Icons.star, color: Colors.amber, size: 20),
+                    ),
+                    Text(
+                      "${course.sections.length} Sections",
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Curriculum List
+                ...course.sections.map(
+                  (section) => _sectionTile(section, context),
+                ),
+
+                // Resources Section
+                if (course.resources.isNotEmpty) ...[
+                  const SizedBox(height: 28),
                   const Text(
-                    " 4.8 ",
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                  ),
-                  const Text("(120)", style: TextStyle(color: Colors.black54)),
-                ],
-              ),
-              const SizedBox(height: 22),
-
-              // Course Stats
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _infoTile(
-                    Icons.access_time,
-                    "${course.sections.fold<int>(0, (sum, s) => sum + s.lectures.length)} hrs",
-                    "Duration",
-                    context,
-                  ),
-                  _infoTile(
-                    Icons.menu_book_rounded,
-                    "${course.sections.length} Modules",
-                    "Lessons",
-                    context,
-                  ),
-                  _infoTile(
-                    Icons.verified,
-                    course.enrolled == true ? "Enrolled" : "Available",
-                    "Status",
-                    context,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Upcoming Live Classes Section
-              upcomingClassesAsync.when(
-                data: (classes) {
-                  final courseClasses = classes
-                      .where((c) => c.courseId == courseId)
-                      .toList();
-                  if (courseClasses.isEmpty) return const SizedBox.shrink();
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Upcoming Live Class",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      ...courseClasses.map((c) => _LiveClassTile(liveClass: c)),
-                      const SizedBox(height: 24),
-                    ],
-                  );
-                },
-                loading: () => const SizedBox.shrink(),
-                error: (error, stack) => const SizedBox.shrink(),
-              ),
-
-              // Recordings Section
-              recordingsAsync.when(
-                data: (recordings) {
-                  if (recordings.isEmpty) return const SizedBox.shrink();
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Class Recordings",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      ...recordings.map((r) => _RecordingTile(recording: r)),
-                      const SizedBox(height: 24),
-                    ],
-                  );
-                },
-                loading: () => const SizedBox.shrink(),
-                error: (error, stack) => const SizedBox.shrink(),
-              ),
-
-              // About Course
-              const Text(
-                "About this Course",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                course.description,
-                style: const TextStyle(height: 1.45, color: Colors.black87),
-              ),
-              const SizedBox(height: 28),
-
-              // Curriculum Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    "Curriculum",
+                    "Resources",
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   ),
-                  Text(
-                    "${course.sections.length} Sections",
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
+                  const SizedBox(height: 14),
+                  ...course.resources.map(
+                    (resource) => _resourceTile(
+                      context,
+                      resource,
+                      course.enrolled ?? false,
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 14),
 
-              // Curriculum List
-              ...course.sections.map(
-                (section) => _sectionTile(section, context),
-              ),
-
-              // Resources Section
-              if (course.resources.isNotEmpty) ...[
-                const SizedBox(height: 28),
-                const Text(
-                  "Resources",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 14),
-                ...course.resources.map(
-                  (resource) => _resourceTile(
-                    context,
-                    resource,
-                    course.enrolled ?? false,
-                  ),
-                ),
+                const SizedBox(height: 100),
               ],
-
-              const SizedBox(height: 100),
-            ],
+            ),
           ),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),

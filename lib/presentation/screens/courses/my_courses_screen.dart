@@ -37,8 +37,15 @@ class _MyCoursesScreenState extends ConsumerState<MyCoursesScreen>
   @override
   void dispose() {
     // Use cached notifiers - safe to call in dispose
-    _visibilityNotifier.state = false;
-    _pollingNotifier.stopPolling();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted)
+        return; // Optional: check mounted if appropriate, but here we want to update global state regardless of this widget's mount status.
+      // However, usually we don't check mounted for global providers.
+      // The crash happens if we modify synchronously.
+      // addPostFrameCallback is correct.
+      _visibilityNotifier.state = false;
+      _pollingNotifier.stopPolling();
+    });
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

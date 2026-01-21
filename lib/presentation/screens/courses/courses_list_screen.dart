@@ -57,75 +57,78 @@ class _CoursesScreenState extends ConsumerState<CoursesScreen> {
             Expanded(
               child: tabIndex == 1
                   ? const EnrolledCoursesView()
-                  : allCoursesAsync.when(
-                      data: (courses) {
-                        if (courses.isEmpty) {
-                          return const Center(
-                            child: Text(
-                              "No courses available",
-                              style: TextStyle(color: Colors.black54),
-                            ),
-                          );
-                        }
-
-                        return ListView.builder(
-                          padding: EdgeInsets.zero,
-                          itemCount: courses.length,
-                          itemBuilder: (context, index) {
-                            final course = courses[index];
-                            final isEnrolled = course.enrolled ?? false;
-
-                            return CourseCard(
-                              course: course,
-                              isEnrolled: isEnrolled,
-                              onCardTap: () => context.push(
-                                RouteConstants.courseDetailsPath(course.id),
+                  : RefreshIndicator(
+                      onRefresh: () => ref.refresh(allCoursesProvider.future),
+                      child: allCoursesAsync.when(
+                        data: (courses) {
+                          if (courses.isEmpty) {
+                            return const Center(
+                              child: Text(
+                                "No courses available",
+                                style: TextStyle(color: Colors.black54),
                               ),
-                              onActionTap: () {
-                                if (!isLoggedIn) {
-                                  _showLoginDialog(context);
-                                  return;
-                                }
-                                if (isEnrolled) {
-                                  context.pushNamed(
-                                    RouteConstants.videoPlayer,
-                                    pathParameters: {'courseId': course.id},
-                                  );
-                                } else {
-                                  context.push(
-                                    RouteConstants.paymentPath(course.id),
-                                  );
-                                }
-                              },
                             );
-                          },
-                        );
-                      },
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (error, stack) => Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
-                              size: 48,
-                              color: Colors.red,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Error: ${error.toString()}',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.red),
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: () => ref.refresh(
-                                allCoursesProvider,
+                          }
+
+                          return ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: EdgeInsets.zero,
+                            itemCount: courses.length,
+                            itemBuilder: (context, index) {
+                              final course = courses[index];
+                              final isEnrolled = course.enrolled ?? false;
+
+                              return CourseCard(
+                                course: course,
+                                isEnrolled: isEnrolled,
+                                onCardTap: () => context.push(
+                                  RouteConstants.courseDetailsPath(course.id),
+                                ),
+                                onActionTap: () {
+                                  if (!isLoggedIn) {
+                                    _showLoginDialog(context);
+                                    return;
+                                  }
+                                  if (isEnrolled) {
+                                    context.pushNamed(
+                                      RouteConstants.videoPlayer,
+                                      pathParameters: {'courseId': course.id},
+                                    );
+                                  } else {
+                                    context.push(
+                                      RouteConstants.paymentPath(course.id),
+                                    );
+                                  }
+                                },
+                              );
+                            },
+                          );
+                        },
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
+                        error: (error, stack) => Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                size: 48,
+                                color: Colors.red,
                               ),
-                              child: const Text('Retry'),
-                            ),
-                          ],
+                              const SizedBox(height: 16),
+                              Text(
+                                'Error: ${error.toString()}',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.red),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () =>
+                                    ref.refresh(allCoursesProvider),
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

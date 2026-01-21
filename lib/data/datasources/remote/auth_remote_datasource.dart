@@ -8,11 +8,19 @@ class AuthRemoteDataSource {
 
   AuthRemoteDataSource(this._dio);
 
-  Future<AuthResponseBlock> login(String email, String password) async {
+  Future<AuthResponseBlock> login(
+    String email,
+    String password,
+    String? mobileNumber,
+  ) async {
     try {
       final response = await _dio.post(
         '${ApiEndpoints.baseUrl}${ApiEndpoints.login}',
-        data: {'email': email, 'password': password},
+        data: {
+          'email': email,
+          'password': password,
+          if (mobileNumber != null) 'mobileNumber': mobileNumber,
+        },
       );
 
       return _parseAuthResponse(response.data);
@@ -25,6 +33,7 @@ class AuthRemoteDataSource {
     String email,
     String password,
     String name,
+    String mobileNumber,
   ) async {
     try {
       final response = await _dio.post(
@@ -33,11 +42,41 @@ class AuthRemoteDataSource {
           'email': email,
           'password': password,
           'name': name,
+          'mobileNumber': mobileNumber,
           'role': 'student', // Default role for app users
         },
       );
 
       return _parseAuthResponse(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<void> logout() async {
+    try {
+      await _dio.post('${ApiEndpoints.baseUrl}${ApiEndpoints.logout}');
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<UserModel> updateProfile(Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.put(
+        '${ApiEndpoints.baseUrl}${ApiEndpoints.profile}',
+        data: data,
+      );
+
+      final responseData = response.data;
+      if (responseData['success'] == false) {
+        throw Exception(responseData['message'] ?? 'Update failed');
+      }
+
+      final userData = responseData['data'] is Map
+          ? responseData['data']
+          : responseData;
+      return UserModel.fromJson(userData['user'] ?? userData);
     } on DioException catch (e) {
       throw _handleError(e);
     }

@@ -20,6 +20,10 @@ class DioClient {
       receiveTimeout: const Duration(seconds: 30),
       sendTimeout: const Duration(seconds: 30),
       responseType: ResponseType.json,
+      validateStatus: (status) {
+        return status != null &&
+            ((status >= 200 && status < 300) || status == 401);
+      },
     );
 
     final dio = Dio(options);

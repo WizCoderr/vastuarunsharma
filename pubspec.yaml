@@ -16,10 +16,8 @@ dependencies:
   go_router: ^17.0.1
   dio: ^5.9.0
   razorpay_flutter: ^1.4.0
-  # Video Player - media_kit (FFmpeg/libmpv based)
-  media_kit: ^1.2.6
-  media_kit_video: ^2.0.1
-  media_kit_libs_video: ^1.0.7
+  # Video Player - YouTube
+  youtube_player_flutter: ^9.0.1
   # For video caching
   path_provider: ^2.1.5
   flutter_native_splash: ^2.4.7

@@ -7,6 +7,8 @@ import '../datasources/remote/course_remote_datasource.dart';
 import '../models/response/course_response.dart';
 import '../models/response/curriculum_response.dart' as response_curriculum;
 import '../../core/errors/failures.dart';
+import '../../core/errors/exceptions.dart';
+import 'package:dio/dio.dart';
 
 class CourseRepositoryImpl implements CourseRepository {
   final CourseRemoteDataSource remote;
@@ -29,6 +31,11 @@ class CourseRepositoryImpl implements CourseRepository {
       final resp = await remote.fetchEnrolledCourses();
       final list = resp.map((r) => _map(r)).toList();
       return Right(list);
+    } on DioException catch (e) {
+      if (e.error is AuthException) {
+        return Left(AuthFailure('Unauthorized'));
+      }
+      return Left(NetworkFailure(e.message ?? e.toString()));
     } on Exception catch (e) {
       return Left(NetworkFailure(e.toString()));
     }

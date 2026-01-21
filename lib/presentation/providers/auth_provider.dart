@@ -27,6 +27,10 @@ final _authDioProvider = Provider<Dio>((ref) {
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       responseType: ResponseType.json,
+      validateStatus: (status) {
+        return status != null &&
+            ((status >= 200 && status < 300) || status == 401);
+      },
     ),
   );
 });
@@ -54,11 +58,12 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
   final AuthRepository _repository;
   final NotificationService _notificationService;
 
-  AuthNotifier(this._repository, this._notificationService) : super(const AsyncValue.loading()) {
-    _init();
+  AuthNotifier(this._repository, this._notificationService)
+    : super(const AsyncValue.loading()) {
+    checkAuthStatus();
   }
 
-  Future<void> _init() async {
+  Future<void> checkAuthStatus() async {
     debugPrint('AuthNotifier: Initializing...');
     try {
       final isLoggedIn = await _repository.checkAuthStatus();
@@ -88,10 +93,14 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
     }
   }
 
-  Future<void> login(String email, String password) async {
+  Future<void> login(
+    String email,
+    String password, [
+    String? mobileNumber,
+  ]) async {
     state = const AsyncValue.loading();
     try {
-      final user = await _repository.login(email, password);
+      final user = await _repository.login(email, password, mobileNumber);
       state = AsyncValue.data(user);
       await _notificationService.syncToken();
     } catch (e, st) {
@@ -100,10 +109,20 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
     }
   }
 
-  Future<void> register(String email, String password, String name) async {
+  Future<void> register(
+    String email,
+    String password,
+    String name,
+    String mobileNumber,
+  ) async {
     state = const AsyncValue.loading();
     try {
-      final user = await _repository.register(email, password, name);
+      final user = await _repository.register(
+        email,
+        password,
+        name,
+        mobileNumber,
+      );
       state = AsyncValue.data(user);
       await _notificationService.syncToken();
     } catch (e, st) {

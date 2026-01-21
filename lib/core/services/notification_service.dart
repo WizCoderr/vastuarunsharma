@@ -8,6 +8,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import '../constants/route_constants.dart';
 import '../../presentation/providers/live_class_provider.dart';
+import '../../presentation/providers/course_provider.dart';
 import '../../domain/entities/live_class.dart';
 
 // Provider to access the service
@@ -218,6 +219,8 @@ class NotificationService {
       final token = await getDeviceToken();
       if (token != null) {
         debugPrint("FCM Token: $token");
+        // Ensure Dio is ready before accessing repository
+        await _ref.read(dioClientProvider.future);
         await _ref.read(liveClassRepositoryProvider).registerDeviceToken(token);
       }
     } catch (e) {
@@ -227,6 +230,8 @@ class NotificationService {
 
   Future<void> removeToken() async {
     try {
+      // Ensure Dio is ready before accessing repository
+      await _ref.read(dioClientProvider.future);
       await _ref.read(liveClassRepositoryProvider).unregisterDeviceToken();
       await _messaging.deleteToken(); // Optional: invalidates on FCM side too
     } catch (e) {
