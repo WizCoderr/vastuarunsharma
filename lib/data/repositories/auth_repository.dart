@@ -10,16 +10,8 @@ class AuthRepository {
   AuthRepository(this._storageService, this._remoteDataSource);
 
   //  Login
-  Future<UserModel> login(
-    String email,
-    String password, [
-    String? mobileNumber,
-  ]) async {
-    final response = await _remoteDataSource.login(
-      email,
-      password,
-      mobileNumber,
-    );
+  Future<UserModel> login(String email, String password) async {
+    final response = await _remoteDataSource.login(email, password);
 
     // Persist
     await _storageService.saveToken(response.token);

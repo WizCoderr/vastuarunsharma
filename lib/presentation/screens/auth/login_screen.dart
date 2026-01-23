@@ -45,9 +45,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           context.go(RouteConstants.dashboard);
         }
       } else if (next.hasError) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Login Failed: ${next.error}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Login Failed: ${next.error.toString().replaceAll("Exception: ", "")}',
+            ),
+          ),
+        );
       }
     });
 

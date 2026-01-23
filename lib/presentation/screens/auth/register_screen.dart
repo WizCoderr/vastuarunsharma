@@ -54,7 +54,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         }
       } else if (next.hasError) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Registration Failed: ${next.error}')),
+          SnackBar(
+            content: Text(
+              'Registration Failed: ${next.error.toString().replaceAll("Exception: ", "")}',
+            ),
+          ),
         );
       }
     });

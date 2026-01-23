@@ -21,18 +21,25 @@ final storageServiceProvider = Provider<StorageService>((ref) {
 });
 
 final _authDioProvider = Provider<Dio>((ref) {
-  return Dio(
+  final dio = Dio(
     BaseOptions(
       baseUrl: ApiEndpoints.baseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       responseType: ResponseType.json,
       validateStatus: (status) {
-        return status != null &&
-            ((status >= 200 && status < 300) || status == 401);
+        return status != null && status < 500;
       },
     ),
   );
+  dio.interceptors.add(
+    LogInterceptor(
+      requestBody: true,
+      responseBody: true,
+      logPrint: (o) => debugPrint(o.toString()),
+    ),
+  );
+  return dio;
 });
 
 final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
@@ -93,14 +100,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
     }
   }
 
-  Future<void> login(
-    String email,
-    String password, [
-    String? mobileNumber,
-  ]) async {
+  Future<void> login(String email, String password) async {
     state = const AsyncValue.loading();
     try {
-      final user = await _repository.login(email, password, mobileNumber);
+      final user = await _repository.login(email, password);
       state = AsyncValue.data(user);
       await _notificationService.syncToken();
     } catch (e, st) {

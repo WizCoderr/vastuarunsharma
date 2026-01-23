@@ -8,19 +8,11 @@ class AuthRemoteDataSource {
 
   AuthRemoteDataSource(this._dio);
 
-  Future<AuthResponseBlock> login(
-    String email,
-    String password,
-    String? mobileNumber,
-  ) async {
+  Future<AuthResponseBlock> login(String email, String password) async {
     try {
       final response = await _dio.post(
         '${ApiEndpoints.baseUrl}${ApiEndpoints.login}',
-        data: {
-          'email': email,
-          'password': password,
-          if (mobileNumber != null) 'mobileNumber': mobileNumber,
-        },
+        data: {'email': email, 'password': password},
       );
 
       return _parseAuthResponse(response.data);
@@ -42,7 +34,7 @@ class AuthRemoteDataSource {
           'email': email,
           'password': password,
           'name': name,
-          'mobileNumber': mobileNumber,
+          'phoneNumber': mobileNumber,
           'role': 'student', // Default role for app users
         },
       );
@@ -84,16 +76,14 @@ class AuthRemoteDataSource {
 
   AuthResponseBlock _parseAuthResponse(dynamic data) {
     if (data is Map<String, dynamic>) {
-      // Check success flag if standard ApiResponse structure is used
-      // Assuming standard ApiResponse structure: { success: true, data: { token: ..., user: ... } }
-      // OR sometimes direct: { token: ..., user: ... }
-
       final success =
           data['success'] as bool? ??
           true; // Default to true if not present, adjust based on actual API
 
       if (!success) {
-        throw Exception(data['message'] ?? 'Authentication failed');
+        throw Exception(
+          data['message'] ?? data['error'] ?? 'Authentication failed: $data',
+        );
       }
 
       final responseData = data['data'] ?? data;
@@ -104,7 +94,6 @@ class AuthRemoteDataSource {
       final userMap = responseData['user'];
 
       if (token == null || userMap == null) {
-        // Fallback if structure is different
         throw Exception("Invalid response format: missing token or user");
       }
 
