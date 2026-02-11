@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.vastuarunsharma.vastuMobile</string>
+	<string>com.vastuarunsharma.vastumobile</string>
 	<key>PROJECT_ID</key>
 	<string>vastunotification</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:996974323504:ios:2312e6ed44bd2206d00af5</string>
+	<string>1:996974323504:ios:5cc913ba5c2aa002d00af5</string>
 </dict>
 </plist>

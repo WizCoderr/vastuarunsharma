@@ -1,4 +1,6 @@
-import 'package:vastu_mobile/shared/utils/either.dart';
+
+import 'package:vastuarunsharma/shared/utils/either.dart';
+
 import '../../domain/entities/course.dart' as entity;
 import '../../domain/entities/course_curriculum.dart' as entity_curriculum;
 import '../../domain/entities/live_class.dart' as entity_live;

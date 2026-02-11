@@ -18,7 +18,7 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
 
 class NotificationService {
   final Ref _ref;
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  FirebaseMessaging? _messaging;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
@@ -46,7 +46,7 @@ class NotificationService {
         );
 
     await _localNotifications.initialize(
-      initializationSettings,
+      settings: initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         // Handle local notification tap
         if (response.payload != null) {
@@ -56,87 +56,92 @@ class NotificationService {
     );
 
     // 1. Request Permission
-    NotificationSettings settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    try {
+      _messaging = FirebaseMessaging.instance;
+      NotificationSettings settings = await _messaging!.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      debugPrint('User granted permission');
-      // Sync token immediately after permission is granted to ensure backend has it
-      await syncToken();
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        debugPrint('User granted permission');
+        // Sync token immediately after permission is granted to ensure backend has it
+        await syncToken();
 
-      // Also request permissions for local notifications specifically on Android 13+ if needed,
-      // though Firebase's request usually covers the OS permission.
-      // We can explicitly request for local notifications to be safe / for platform specific controls
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.requestNotificationsPermission();
-    } else {
-      debugPrint('User declined or has not accepted permission');
-      // We don't return here, we still want to set up listeners in case
-      // permissions are granted later or for silence messages if that's a thing
-    }
-
-    // 2. Handle background message (when app is opened from terminated state)
-    // setupInteractedMessage(router); // Logic moved to main or handled via onMessageOpenedApp
-
-    // 3. Foreground Messages
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint("Foreground Message: ${message.notification?.title}");
-
-      if (message.notification != null &&
-          router.routerDelegate.navigatorKey.currentContext != null) {
-        final context = router.routerDelegate.navigatorKey.currentContext!;
-        // Ensure context is still valid if needed, though here we just grabbed it.
-        // For strict lint compliance we can't easily check 'mounted' on a context derived this way
-        // without a StatefulWidget, but we can wrap it.
-        // Actually, just ignoring it is common for global keys, but let's try strict.
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  message.notification!.title ?? 'New Notification',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                if (message.notification!.body != null)
-                  Text(message.notification!.body!),
-              ],
-            ),
-            backgroundColor: Colors.red.shade700,
-            behavior: SnackBarBehavior.floating,
-            action: SnackBarAction(
-              label: 'VIEW',
-              textColor: Colors.white,
-              onPressed: () => _handleMessage(message, router),
-            ),
-          ),
-        );
+        // Also request permissions for local notifications specifically on Android 13+ if needed,
+        // though Firebase's request usually covers the OS permission.
+        // We can explicitly request for local notifications to be safe / for platform specific controls
+        await _localNotifications
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >()
+            ?.requestNotificationsPermission();
+      } else {
+        debugPrint('User declined or has not accepted permission');
+        // We don't return here, we still want to set up listeners in case
+        // permissions are granted later or for silence messages if that's a thing
       }
-    });
 
-    // 4. Background/Terminated Tap
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      _handleMessage(message, router);
-    });
+      // 2. Handle background message (when app is opened from terminated state)
+      // setupInteractedMessage(router); // Logic moved to main or handled via onMessageOpenedApp
 
-    // 5. Listen for token refresh
-    _messaging.onTokenRefresh.listen((newToken) {
-      debugPrint("FCM Token Refreshed: $newToken");
-      syncToken();
-    });
+      // 3. Foreground Messages
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint("Foreground Message: ${message.notification?.title}");
 
-    // Check if app was opened from terminated state
-    RemoteMessage? initialMessage = await _messaging.getInitialMessage();
-    if (initialMessage != null) {
-      _handleMessage(initialMessage, router);
+        if (message.notification != null &&
+            router.routerDelegate.navigatorKey.currentContext != null) {
+          final context = router.routerDelegate.navigatorKey.currentContext!;
+          // Ensure context is still valid if needed, though here we just grabbed it.
+          // For strict lint compliance we can't easily check 'mounted' on a context derived this way
+          // without a StatefulWidget, but we can wrap it.
+          // Actually, just ignoring it is common for global keys, but let's try strict.
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message.notification!.title ?? 'New Notification',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  if (message.notification!.body != null)
+                    Text(message.notification!.body!),
+                ],
+              ),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+              action: SnackBarAction(
+                label: 'VIEW',
+                textColor: Colors.white,
+                onPressed: () => _handleMessage(message, router),
+              ),
+            ),
+          );
+        }
+      });
+
+      // 4. Background/Terminated Tap
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        _handleMessage(message, router);
+      });
+
+      // 5. Listen for token refresh
+      _messaging?.onTokenRefresh.listen((newToken) {
+        debugPrint("FCM Token Refreshed: $newToken");
+        syncToken();
+      });
+
+      // Check if app was opened from terminated state
+      RemoteMessage? initialMessage = await _messaging!.getInitialMessage();
+      if (initialMessage != null) {
+        _handleMessage(initialMessage, router);
+      }
+    } catch (e) {
+      debugPrint("Firebase Messaging init failed: $e");
     }
   }
 
@@ -184,11 +189,11 @@ class NotificationService {
   }) async {
     try {
       await _localNotifications.zonedSchedule(
-        id,
-        title,
-        body,
-        tz.TZDateTime.from(scheduledDate, tz.local),
-        const NotificationDetails(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: tz.TZDateTime.from(scheduledDate, tz.local),
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'live_class_channel',
             'Live Classes',
@@ -198,8 +203,6 @@ class NotificationService {
           ),
           iOS: DarwinNotificationDetails(),
         ),
-        // uiLocalNotificationDateInterpretation:
-        //    UILocalNotificationDateInterpretation.absoluteTime,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         payload: payload,
       );
@@ -210,7 +213,8 @@ class NotificationService {
   }
 
   Future<String?> getDeviceToken() async {
-    return await _messaging.getToken();
+    if (_messaging == null) return null;
+    return await _messaging!.getToken();
   }
 
   // Sync token with backend
@@ -233,7 +237,9 @@ class NotificationService {
       // Ensure Dio is ready before accessing repository
       await _ref.read(dioClientProvider.future);
       await _ref.read(liveClassRepositoryProvider).unregisterDeviceToken();
-      await _messaging.deleteToken(); // Optional: invalidates on FCM side too
+      if (_messaging != null) {
+        await _messaging!.deleteToken();
+      }
     } catch (e) {
       debugPrint("Failed to remove token: $e");
     }

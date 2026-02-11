@@ -1,4 +1,4 @@
-import 'package:vastu_mobile/shared/utils/either.dart';
+import 'package:vastuarunsharma/shared/utils/either.dart';
 import '../entities/course.dart';
 import '../entities/course_curriculum.dart';
 import '../../core/errors/failures.dart';
