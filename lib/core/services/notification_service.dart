@@ -98,7 +98,8 @@ class NotificationService {
           // without a StatefulWidget, but we can wrap it.
           // Actually, just ignoring it is common for global keys, but let's try strict.
 
-          ScaffoldMessenger.of(context).showSnackBar(
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -121,6 +122,7 @@ class NotificationService {
               ),
             ),
           );
+          }
         }
       });
 

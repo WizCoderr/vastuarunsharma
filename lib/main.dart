@@ -11,7 +11,7 @@ void main() async {
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   // Initialize Firebase
   try {
-    await Firebase.initializeApp(); 
+    await Firebase.initializeApp();
   } catch (e) {
     debugPrint("Firebase init failed: $e");
   }
@@ -22,7 +22,6 @@ void main() async {
   runApp(
     ProviderScope(
       overrides: [
-        // Override the provider to use the initialized instance
         sharedPreferencesProvider.overrideWithValue(prefs),
       ],
       child: const VastuApp(),

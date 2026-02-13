@@ -8,6 +8,7 @@ class RouteConstants {
   static const String myCourses = '/my-courses';
   static const String profile = '/profile';
   static const String stats = '/stats';
+  static const String compass = '/compass';
   static const String payment = 'payment';
 
   // Routes with parameters
@@ -20,4 +21,10 @@ class RouteConstants {
   static String enrollmentPath(String id) => '/enrollment/$id';
   static String videoPlayerPath(String id) => '/video/$id';
   static String paymentPath(String id) => '/payment/$id';
+  static const String compassResult = '/compass-result';
+  static const String compassNormal = '/compass/normal';
+  static const String compassSixteen = '/compass/16-zone';
+  static const String compassThirtyTwo = '/compass/32-zone';
+  static const String compassChakra = '/compass/advancedvastucakra';
+  static const String compassVastu = '/compass/vastu';
 }

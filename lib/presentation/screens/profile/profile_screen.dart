@@ -143,7 +143,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     _buildStatsCard(
                       context,
                       count: null,
-                      onTap: () => _callWhatsAppChat("+919056012115"),
+                      onTap: () => _callWhatsAppChat("+919810520104"), 
                       label: 'Contact Us',
                       iconColor: AppColors.primaryVariant,
                       backgroundColor: AppColors.secondaryVariant,

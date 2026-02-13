@@ -204,18 +204,12 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
             status: 'COMPLETED',
             watchedDuration: next.position.inSeconds,
           );
-          ref.read(progressRemoteDataSourceProvider).updateProgress(req).then((
-            _,
-          ) {
-            if (mounted) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('Progress saved!')));
-            }
-          });
+          _saveProgress(req);
         }
       }
     });
+
+
 
     // If fullscreen is active in provider/state, YoutubePlayerBuilder handles it,
     // effectively pushing a new route. We just build the normal scaffold here.
@@ -721,5 +715,14 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _saveProgress(ProgressUpdateRequest req) async {
+    await ref.read(progressRemoteDataSourceProvider).updateProgress(req);
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Progress saved!')));
+    }
   }
 }

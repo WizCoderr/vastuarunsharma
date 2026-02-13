@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:vastuarunsharma/presentation/screens/compass/screens/AdvancedVastuCakra.dart';
+import 'package:vastuarunsharma/presentation/screens/compass/screens/SixteenZoneCompass.dart';
+import 'package:vastuarunsharma/presentation/screens/compass/screens/ThirtytwoZoneCompass.dart';
 import '../../core/constants/route_constants.dart';
 
 import '../../presentation/providers/auth_provider.dart';
@@ -17,6 +20,9 @@ import '../../presentation/screens/profile/profile_screen.dart';
 import '../../presentation/screens/stats/stats_screen.dart';
 import '../../presentation/screens/payment/payment_screen.dart';
 import '../../presentation/screens/pdf/pdf_viewer_screen.dart';
+import '../../presentation/screens/compass/screens/compas_screen.dart';
+import '../../presentation/screens/compass/compass_result_screen.dart';
+import '../../presentation/screens/compass/compas_home.dart';
 import '../../presentation/widgets/navigation/app_navigation_shell.dart';
 import 'router_notifier.dart';
 
@@ -46,6 +52,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           state.matchedLocation != RouteConstants.landing &&
           state.matchedLocation != RouteConstants.courses &&
           state.matchedLocation != RouteConstants.dashboard &&
+          !state.matchedLocation.startsWith(
+            RouteConstants.compass,
+          ) && // Allow all compass routes
+          state.matchedLocation != RouteConstants.compassResult &&
           state.matchedLocation != RouteConstants.profile &&
           !state.matchedLocation.startsWith('/course/')) {
         return RouteConstants.landing;
@@ -129,6 +139,32 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const DashboardScreen(),
           ),
           GoRoute(
+            path: RouteConstants.compass,
+            builder: (context, state) => const CompassHomeScreen(),
+            routes: [
+              GoRoute(
+                name: 'compass-normal',
+                path: 'normal',
+                builder: (context, state) => const CompassScreen(),
+              ),
+              GoRoute(
+                name: 'compass-16zone',
+                path: '16-zone',
+                builder: (context, state) => const SixteenZoneCompass(),
+              ),
+              GoRoute(
+                name: 'compass-32zone',
+                path: '32-zone',
+                builder: (context, state) => const Thirtytwozonecompass(),
+              ),
+              GoRoute(
+                name: 'compass-advancedvastucakra',
+                path: 'advancedvastucakra',
+                builder: (context, state) => const Advancedvastucakra(),
+              ),
+            ],
+          ),
+          GoRoute(
             path: RouteConstants.courses,
             builder: (context, state) => const CoursesScreen(),
           ),
@@ -157,6 +193,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             url: extra['url'] as String,
             title: extra['title'] as String,
           );
+        },
+      ),
+
+      GoRoute(
+        path: RouteConstants.compassResult,
+        builder: (context, state) {
+          final extras = state.extra as Map<String, dynamic>?;
+          final imagePath = extras?['imagePath'] as String? ?? '';
+          return CompassResultScreen(imagePath: imagePath);
         },
       ),
     ],

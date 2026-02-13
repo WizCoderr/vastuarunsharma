@@ -12,10 +12,12 @@ class AppNavigationShell extends StatelessWidget {
   });
 
   int _getIndexFromLocation(String location) {
-    if (location.startsWith('/courses') || location.startsWith('/my-courses')) {
+    if (location.startsWith(RouteConstants.compass)) {
       return 1;
-    } else if (location.startsWith('/profile')) {
+    } else if (location.startsWith('/courses') || location.startsWith('/my-courses')) {
       return 2;
+    } else if (location.startsWith('/profile')) {
+      return 3;
     }
     return 0; // Dashboard
   }
@@ -26,9 +28,12 @@ class AppNavigationShell extends StatelessWidget {
         context.go(RouteConstants.dashboard);
         break;
       case 1:
-        context.go(RouteConstants.courses);
+        context.go(RouteConstants.compass);
         break;
       case 2:
+        context.go(RouteConstants.courses);
+        break;
+      case 3:
         context.go(RouteConstants.profile);
         break;
     }
@@ -82,8 +87,19 @@ class AppNavigationShell extends StatelessWidget {
               ),
               NavigationDestination(
                 icon: Icon(
-                  Icons.school_outlined,
+                  Icons.explore_outlined,
                   color: currentIndex == 1 ? AppColors.primary : Colors.grey[600],
+                ),
+                selectedIcon: Icon(
+                  Icons.explore,
+                  color: AppColors.primary,
+                ),
+                label: 'Compass',
+              ),
+              NavigationDestination(
+                icon: Icon(
+                  Icons.school_outlined,
+                  color: currentIndex == 2 ? AppColors.primary : Colors.grey[600],
                 ),
                 selectedIcon: Icon(
                   Icons.school,
@@ -94,7 +110,7 @@ class AppNavigationShell extends StatelessWidget {
               NavigationDestination(
                 icon: Icon(
                   Icons.person_outline,
-                  color: currentIndex == 2 ? AppColors.primary : Colors.grey[600],
+                  color: currentIndex == 3 ? AppColors.primary : Colors.grey[600],
                 ),
                 selectedIcon: Icon(
                   Icons.person,
