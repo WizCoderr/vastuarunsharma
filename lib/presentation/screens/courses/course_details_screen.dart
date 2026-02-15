@@ -10,6 +10,8 @@ import '../../providers/live_class_provider.dart';
 import '../../../domain/entities/live_class.dart';
 import '../../../domain/entities/recording.dart';
 import '../../../domain/entities/course.dart';
+import '../../providers/payment_provider.dart';
+import '../../providers/refresh_provider.dart';
 
 class CourseDetailsScreen extends ConsumerWidget {
   final String courseId;
@@ -337,7 +339,7 @@ class CourseDetailsScreen extends ConsumerWidget {
                 height: 50,
                 width: 170,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     final authState = ref.read(authStateProvider);
                     if (authState.value == null) {
                       _showLoginDialog(context);
@@ -346,6 +348,50 @@ class CourseDetailsScreen extends ConsumerWidget {
 
                     if (course.enrolled == true) {
                       context.go(RouteConstants.videoPlayerPath(courseId));
+                    } else if (course.price == 0) {
+                      // Free Course Bypass
+                      try {
+                        // Show loading indicator
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Enrolling in free course..."),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+
+                        final success = await ref
+                            .read(paymentControllerProvider.notifier)
+                            .verifyPayment(
+                              razorpayOrderId:
+                                  "free_order_${DateTime.now().millisecondsSinceEpoch}",
+                              razorpayPaymentId:
+                                  "free_payment_${DateTime.now().millisecondsSinceEpoch}",
+                              razorpaySignature:
+                                  "free_signature_${DateTime.now().millisecondsSinceEpoch}",
+                              courseId: courseId,
+                            );
+
+                        if (success && context.mounted) {
+                          ref.refreshAfterEnrollment();
+                          ref.refreshCourseDetails(courseId);
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Enrollment Successful!"),
+                            ),
+                          );
+                          context.go(RouteConstants.enrollmentPath(courseId));
+                        }
+                      } catch (e) {
+                         if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("Enrollment Failed: $e"),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
                     } else {
                       context.go(RouteConstants.paymentPath(courseId));
                     }
