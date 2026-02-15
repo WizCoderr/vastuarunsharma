@@ -50,7 +50,7 @@ flutter_icons:
 
 flutter_native_splash:
   color: "#FFFFFF"
-  image: assets/images/splash_logo.png
+  image: assets/images/vas.png
   android: true
   android_12:
     image: assets/images/android-12-icon.png
