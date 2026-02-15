@@ -128,91 +128,84 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    // Stats Card
-                    _buildStatsCard(
+                    // Menu Items
+                    _buildProfileMenuItem(
                       context,
-                      count: user.enrolledCourseIds.length,
                       onTap: () => context.push(RouteConstants.myCourses),
                       label: 'My Courses',
-                      iconColor: AppColors.primaryVariant,
-                      backgroundColor: AppColors.secondaryVariant,
+                      icon: Icons.school,
                     ),
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 16),
 
-                    // Contact Section
-                    _buildStatsCard(
+                    _buildProfileMenuItem(
                       context,
-                      count: null,
-                      onTap: () => _callWhatsAppChat("+919810520104"), 
+                      onTap: () => _callWhatsAppChat("+919810520104"),
                       label: 'Contact Us',
-                      iconColor: AppColors.primaryVariant,
-                      backgroundColor: AppColors.secondaryVariant,
+                      icon: Icons.school, // Using scroll icon for now to match screenshot "Contact Us" which looks like a scroll/graduation cap too? Wait, screenshot has same icon for both? No, bottom is a Graduation Cap?
+                      // Actually, let's use a contact icon for Contact Us for better UX, though screenshot might be reusing an icon.
+                      // Wait, the screenshot shows "Available Courses" (graduation cap) and "Contact Us" (looks like a graduation cap too but maybe slightly different? No, exact same icon).
+                      // Use Icons.school for both if that's what the design is, or maybe Icons.contact_support.
+                      // Let's stick to Icons.school for My Courses. For Contact Us, let's use Icons.school as well to match screenshot EXACTLY if that is indeed the intention, or maybe it was a placeholder.
+                      // The screenshot shows:
+                      // Top: My Courses (Graduation Cap)
+                      // Bottom: Contact Us (Graduation Cap)
+                      // Using Icons.school for both.
                     ),
 
                     const SizedBox(height: 48),
 
-                    // Logout Button
-                    // Logout Button (Updated UI)
-                    Container(
+                    // Sign Out Button
+                    SizedBox(
                       width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 32),
-                      child: OutlinedButton.icon(
+                      child: OutlinedButton(
                         onPressed: _handleLogout,
-                        icon: const Icon(Icons.logout),
-                        label: const Text(
-                          'Sign Out',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.error,
-                          side: BorderSide(
-                            color: AppColors.error.withOpacity(0.6),
-                            width: 1.5,
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          side: const BorderSide(color: AppColors.error),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(12),
                           ),
+                          foregroundColor: AppColors.error,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Text(
+                              'Sign Out',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(Icons.logout, size: 20),
+                          ],
                         ),
                       ),
                     ),
-                    // Footer
+                    const SizedBox(height: 32),
+
+                    // Branding Footer
                     Column(
                       children: [
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Container(
-                              width: 40,
-                              height: 1,
-                              color: Colors.grey.shade300,
+                            Text(
+                              'Vastu Arun Sharma',
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                             const SizedBox(width: 8),
-                            const Icon(
-                              Icons.verified_user,
+                            Icon(
+                              Icons.verified_user_outlined,
                               size: 16,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 40,
-                              height: 1,
-                              color: Colors.grey.shade300,
+                              color: Colors.grey[400],
                             ),
                           ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Vastu Arun Sharma',
-                          style: TextStyle(
-                            fontSize: 12,
-                            letterSpacing: 1.2,
-                            color: Colors.grey.shade500,
-                            fontWeight: FontWeight.w500,
-                          ),
                         ),
                       ],
                     ),
@@ -223,98 +216,54 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildStatsCard<T>(
+  Widget _buildProfileMenuItem(
     BuildContext context, {
-    required T?
-    count, // Optional, can be null or any type (e.g., int, double, String)
     required VoidCallback onTap,
-    required String label, // e.g., "My Courses", "Completed", "Total"
-    IconData? leadingIcon = Icons.school,
-    Color? backgroundColor = AppColors.secondaryVariant,
-    Color? iconColor = AppColors.primaryVariant,
-    TextStyle? labelStyle,
-    TextStyle? countStyle,
-    Color? countColor = AppColors.primary,
-    double? iconSize = 28,
-    double? labelFontSize = 14,
-    double? countFontSize = 28,
-    FontWeight? labelFontWeight = FontWeight.w600,
-    FontWeight? countFontWeight = FontWeight.bold,
-    Color? labelColor = AppColors.onBackground,
-    Color? countColorOverride, // Optional override for count color
+    required String label,
+    required IconData icon,
   }) {
-    final shouldShowCount = count != null && count != 0;
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: backgroundColor ?? AppColors.background,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          color: AppColors.secondaryVariant.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: backgroundColor ?? AppColors.secondaryVariant,
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.secondary,
+                shape: BoxShape.circle,
               ),
-              child: Icon(leadingIcon, color: iconColor, size: iconSize ?? 28),
+              child: Icon(icon, color: AppColors.primaryVariant, size: 24),
             ),
             const SizedBox(width: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  label,
-                  style:
-                      labelStyle ??
-                      TextStyle(
-                        fontSize: labelFontSize ?? 14,
-                        color: labelColor ?? AppColors.onBackground,
-                        fontWeight: labelFontWeight ?? FontWeight.w600,
-                      ),
-                ),
-                shouldShowCount ? SizedBox(width: 4) : SizedBox.shrink(),
-                shouldShowCount
-                    ? Text(
-                        count.toString(),
-                        style:
-                            countStyle ??
-                            TextStyle(
-                              fontSize: countFontSize ?? 28,
-                              fontWeight: countFontWeight ?? FontWeight.bold,
-                              color:
-                                  countColorOverride ??
-                                  countColor ??
-                                  AppColors.primary,
-                            ),
-                      )
-                    : SizedBox.shrink(),
-              ],
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: AppColors.onBackground,
+              ),
             ),
             const Spacer(),
-            Icon(
+            const Icon(
               Icons.arrow_forward_ios,
-              size: 18,
-              color: AppColors.onBackground,
+              size: 16,
+              color: AppColors.primaryVariant,
             ),
           ],
         ),
       ),
     );
   }
+
+
+
 
   Widget _buildGuestView(BuildContext context) {
     return Center(

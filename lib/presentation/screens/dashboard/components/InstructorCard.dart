@@ -7,7 +7,8 @@ class InstructorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -22,75 +23,45 @@ class InstructorCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: DashboardColors.accentGoldLight,
-                  image: const DecorationImage(
-                    image: AssetImage('assets/images/instructor.png'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Arun Sharma',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: DashboardColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'MASTER EDUCATOR',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: DashboardColors.accentGold,
-                        letterSpacing: 1.1,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Arun Sharma is a professional Vastu Consultant and Vastu Educator with over five years of focused experience in Vastu Shastra and energy-based space planning. Known for his structured methodology and logical approach, he has built a reputation for delivering practical, result-oriented Vastu solutions that align traditional principles with modern living and business environments',
+          const Text(
+            'About Arun Sharma',
             style: TextStyle(
-              fontSize: 14,
-              color: DashboardColors.textSecondary,
-              height: 1.5,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: DashboardColors.textPrimary,
+              height: 1.2,
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Text(
-                'Read More',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: DashboardColors.accentGold,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                Icons.arrow_forward,
-                size: 16,
-                color: DashboardColors.accentGold,
-              ),
-            ],
+          Text(
+            "Arun Sharma is a seasoned Vastu consultant with over 15 years of experience in the field. He has helped numerous clients create harmonious living and working spaces by applying the principles of Vastu Shastra. Arun's expertise lies in analyzing the energy flow of spaces and providing practical solutions to enhance well-being and prosperity.",
+            style: const TextStyle(
+              fontSize: 15,
+              color: DashboardColors.textSecondary,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 24),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.asset(
+              'assets/images/IMG_5941.JPG',
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: 200,
+                  color: Colors.grey[200],
+                  child: const Center(
+                    child: Icon(
+                      Icons.image_not_supported,
+                      size: 50,
+                      color: Colors.grey,
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),

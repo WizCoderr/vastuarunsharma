@@ -35,11 +35,18 @@ dependencies:
   gal: ^2.3.2
   camera: ^0.11.3+1
   share_plus: ^12.0.1
+  flutter_launcher_icons: ^0.14.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/vas.png"
+  adaptive-icon-foreground: "assets/images/ic_launcher_forground.png"
 
 flutter_native_splash:
   color: "#FFFFFF"

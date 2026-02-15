@@ -8,11 +8,13 @@ import '../../providers/course_provider.dart';
 import '../../providers/live_class_provider.dart';
 import '../../../core/services/notification_service.dart';
 import 'DashboardColors.dart';
-import 'components/LearningCompassCard.dart';
 import 'components/InstructorCard.dart';
-import 'components/FeaturedWisdomCard.dart';
+import 'components/ServiceCard.dart';
 import 'components/CourseProgressCard.dart';
 import 'components/LiveClassBanner.dart';
+import 'components/TestimonialsSection.dart';
+import 'components/InquiryCard.dart';
+import 'components/TrustMarkersSection.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -40,10 +42,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Future<void> _refreshData() async {
     final user = ref.read(authStateProvider).value;
-    await Future.wait([
+    await Future.wait(<Future>[
       ref.refresh(allCoursesProvider.future),
       ref.refresh(enrolledCoursesProvider.future),
-      if (user != null) ref.refresh(todayLiveClassesProvider.future),
+      if (user != null)
+        ref.refresh(todayLiveClassesProvider.future)
+      else
+        Future.value(), // No live classes to refresh for guests
     ]);
   }
 
@@ -114,7 +119,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       );
                     },
                   ),
-                  
+
                   RichText(
                     text: TextSpan(
                       style: const TextStyle(
@@ -185,20 +190,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       elevation: 0,
                     ),
                     child: const Text(
-                      "Login / Register", 
+                      "Login / Register",
                       style: TextStyle(
-                        fontSize: 16, 
-                        fontWeight: FontWeight.bold
-                      )
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
 
                 const SizedBox(height: 32),
-                
-                // Learning Compass
-                const LearningCompassCard(),
-                const SizedBox(height: 24),
 
                 // Enrolled Courses (Only if logged in)
                 if (user != null) ...[
@@ -270,7 +271,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         physics: const NeverScrollableScrollPhysics(),
                         shrinkWrap: true,
                         itemCount: courses.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 16),
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 16),
                         itemBuilder: (context, index) {
                           final course = courses[index];
                           return CourseProgressCard(course: course);
@@ -288,9 +290,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 const InstructorCard(),
                 const SizedBox(height: 32),
 
-                // Featured Wisdom
+                // Free Services
                 const Text(
-                  'Featured Wisdom',
+                  'Free Services',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -298,22 +300,87 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: const [
-                    Expanded(
-                      child: FeaturedWisdomCard(
-                        imagePath: 'assets/images/wizdom_1.JPG',
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  child: Row(
+                    children: [
+                      ServiceCard(
+                        icon: Icons.menu_book_rounded,
+                        title: 'Basic Vastu Audit',
+                        description:
+                            "Get a preliminary assessment of your property's energy flow and basic compliance check.",
+                        actionText: 'Start Audit',
+                        onTap: () {
+                          // TODO: Navigate to Audit
+                        },
                       ),
-                    ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: FeaturedWisdomCard(
-                        imagePath: 'assets/images/wizdom_1.JPG',
+                      const SizedBox(width: 16),
+                      ServiceCard(
+                        icon: Icons.compass_calibration_rounded,
+                        title: 'Direction Check',
+                        description:
+                            "Accurately determine cardinal directions using our digital compass tool.",
+                        actionText: 'Open Tool',
+                        onTap: () => context.push(RouteConstants.compass),
                       ),
-                    ),
-                    
-                  ],
+                    ],
+                  ),
                 ),
+
+                const SizedBox(height: 32),
+
+                // Paid Services
+                const Text(
+                  'Paid Services',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: DashboardColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  child: Row(
+                    children: [
+                      ServiceCard(
+                        icon: Icons.home_rounded,
+                        title: 'Professional Home Consultation',
+                        description:
+                            "In-depth analysis of your home layout with personalized remedies and report.",
+                        actionText: 'Book Now',
+                        onTap: () {
+                          // TODO: Navigate to Booking
+                        },
+                      ),
+                      const SizedBox(width: 16),
+                      ServiceCard(
+                        icon: Icons.store_rounded,
+                        title: 'Commercial Consultation',
+                        description:
+                            "Optimize your workspace for better business growth and employee productivity.",
+                        actionText: 'Book Now',
+                        onTap: () {
+                          // TODO: Navigate to Booking
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Testimonials
+                const TestimonialsSection(),
+                const SizedBox(height: 32),
+
+                // Inquiry Form
+                const InquiryCard(),
+                const SizedBox(height: 32),
+
+                // Trust Markers
+                const TrustMarkersSection(),
                 const SizedBox(height: 32),
               ],
             ),
@@ -323,4 +390,3 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 }
-
