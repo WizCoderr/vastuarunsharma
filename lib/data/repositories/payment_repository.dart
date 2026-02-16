@@ -35,4 +35,13 @@ class PaymentRepository {
       return Left(NetworkFailure(e.toString()));
     }
   }
+
+  Future<Either<Failure, bool>> freeEnroll(String courseId) async {
+    try {
+      final success = await remoteDataSource.freeEnroll(courseId);
+      return Right(success);
+    } catch (e) {
+      return Left(NetworkFailure(e.toString()));
+    }
+  }
 }

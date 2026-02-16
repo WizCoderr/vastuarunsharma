@@ -12,6 +12,8 @@ import '../../../domain/entities/recording.dart';
 import '../../../domain/entities/course.dart';
 import '../../providers/payment_provider.dart';
 import '../../providers/refresh_provider.dart';
+import '../../widgets/glass_button.dart';
+import '../../widgets/glass_container.dart';
 
 class CourseDetailsScreen extends ConsumerWidget {
   final String courseId;
@@ -29,6 +31,7 @@ class CourseDetailsScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => {
@@ -38,7 +41,6 @@ class CourseDetailsScreen extends ConsumerWidget {
               {context.go(RouteConstants.courses)},
           },
         ),
-        centerTitle: true,
         title: const Text(
           "COURSE DETAILS",
           style: TextStyle(color: Colors.black54, fontSize: 14),
@@ -307,12 +309,10 @@ class CourseDetailsScreen extends ConsumerWidget {
         ),
       ),
       bottomNavigationBar: courseAsync.when(
-        data: (course) => Container(
+        data: (course) => GlassContainer(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
-          ),
+          borderRadius: 0, // Flat bottom sheet
+          opacity: 0.9,
           child: Row(
             children: [
               Column(
@@ -335,75 +335,64 @@ class CourseDetailsScreen extends ConsumerWidget {
                 ],
               ),
               const Spacer(),
-              SizedBox(
-                height: 50,
+              GlassButton(
                 width: 170,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final authState = ref.read(authStateProvider);
-                    if (authState.value == null) {
-                      _showLoginDialog(context);
-                      return;
-                    }
+                height: 50,
+                onPressed: () async {
+                  final authState = ref.read(authStateProvider);
+                  if (authState.value == null) {
+                    _showLoginDialog(context);
+                    return;
+                  }
 
-                    if (course.enrolled == true) {
-                      context.go(RouteConstants.videoPlayerPath(courseId));
-                    } else if (course.price == 0) {
-                      // Free Course Bypass
-                      try {
-                        // Show loading indicator
+                  if (course.enrolled == true) {
+                    context.go(RouteConstants.videoPlayerPath(courseId));
+                  } else if (course.price == 0) {
+                    // Free Course Bypass
+                    try {
+                      // Show loading indicator
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Enrolling in free course..."),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+
+                      final success = await ref
+                          .read(paymentControllerProvider.notifier)
+                          .freeEnroll(courseId);
+
+                      if (success && context.mounted) {
+                        ref.refreshAfterEnrollment();
+                        ref.refreshCourseDetails(courseId);
+
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text("Enrolling in free course..."),
-                            duration: Duration(seconds: 1),
+                            content: Text("Enrollment Successful!"),
                           ),
                         );
-
-                        final success = await ref
-                            .read(paymentControllerProvider.notifier)
-                            .verifyPayment(
-                              razorpayOrderId:
-                                  "free_order_${DateTime.now().millisecondsSinceEpoch}",
-                              razorpayPaymentId:
-                                  "free_payment_${DateTime.now().millisecondsSinceEpoch}",
-                              razorpaySignature:
-                                  "free_signature_${DateTime.now().millisecondsSinceEpoch}",
-                              courseId: courseId,
-                            );
-
-                        if (success && context.mounted) {
-                          ref.refreshAfterEnrollment();
-                          ref.refreshCourseDetails(courseId);
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Enrollment Successful!"),
-                            ),
-                          );
-                          context.go(RouteConstants.enrollmentPath(courseId));
-                        }
-                      } catch (e) {
-                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text("Enrollment Failed: $e"),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
+                        context.go(RouteConstants.enrollmentPath(courseId));
                       }
-                    } else {
-                      context.go(RouteConstants.paymentPath(courseId));
+                    } catch (e) {
+                       if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("Enrollment Failed: $e"),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    course.enrolled == true ? 'Start Learning' : 'Join Now',
+                  } else {
+                    context.go(RouteConstants.paymentPath(courseId));
+                  }
+                },
+                color: Theme.of(context).colorScheme.primary,
+                child: Text(
+                  course.enrolled == true ? 'Start Learning' : 'Join Now',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),

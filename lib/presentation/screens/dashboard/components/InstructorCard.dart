@@ -1,24 +1,23 @@
 import 'package:flutter/material.dart';
 import '../DashboardColors.dart';
+import '../../../widgets/glass_container.dart';
 
 class InstructorCard extends StatelessWidget {
   const InstructorCard({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GlassContainer(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
+      borderRadius: 24,
+      gradient: LinearGradient(
+        colors: [
+          Colors.white.withOpacity(0.9),
+          Colors.white.withOpacity(0.7),
         ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,7 +44,7 @@ class InstructorCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: Image.asset(
-              'assets/images/IMG_5941.JPG',
+              'assets/images/DSC06354.JPG',
               width: double.infinity,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {

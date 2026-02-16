@@ -107,6 +107,33 @@ class PaymentController extends StateNotifier<AsyncValue<void>> {
       },
     );
   }
+
+  Future<bool> freeEnroll(String courseId) async {
+    if (courseId.trim().isEmpty) {
+      debugPrint('PaymentController: freeEnroll called with empty courseId');
+      throw Exception('courseId is required');
+    }
+
+    state = const AsyncValue.loading();
+    debugPrint("PaymentController: processing free enrollment for $courseId");
+
+    final result = await _repository.freeEnroll(courseId);
+
+    return result.fold(
+      (failure) {
+        debugPrint(
+          "PaymentController: freeEnroll failed: ${failure.message}",
+        );
+        state = AsyncValue.error(failure.message, StackTrace.current);
+        throw Exception(failure.message);
+      },
+      (success) {
+        debugPrint("PaymentController: freeEnroll success");
+        state = const AsyncValue.data(null);
+        return success;
+      },
+    );
+  }
 }
 
 final paymentControllerProvider =

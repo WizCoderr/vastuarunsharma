@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../widgets/glass_container.dart';
+
 class CompassResultScreen extends StatelessWidget {
   final String imagePath;
 
@@ -31,18 +33,9 @@ class CompassResultScreen extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
+              child: GlassContainer(
+                borderRadius: 16,
+                padding: EdgeInsets.zero,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: imagePath.isNotEmpty
@@ -181,18 +174,21 @@ class CompassResultScreen extends StatelessWidget {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
-        child: Container(
+        child: GlassContainer(
           height: 100, // Fixed height for square look
-          decoration: BoxDecoration(
-            color: const Color(0xFFD7A417), // AppColors.primary
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFD7A417).withOpacity(0.4),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
+          borderRadius: 16,
+          // Use a custom gradient that mimics the gold color but with glass transparency
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFFD7A417).withOpacity(0.9),
+              const Color(0xFFD7A417).withOpacity(0.7),
             ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.3),
+            width: 1,
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

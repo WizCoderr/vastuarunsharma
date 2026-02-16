@@ -204,6 +204,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           return CompassResultScreen(imagePath: imagePath);
         },
       ),
+
     ],
   );
 });

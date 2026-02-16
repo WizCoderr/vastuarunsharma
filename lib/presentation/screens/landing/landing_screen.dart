@@ -44,9 +44,6 @@ class _LandingScreenState extends State<LandingScreen> {
         child: Column(
           children: [
             const SizedBox(height: 40),
-
-            // Image Slider Section
-            // Image Slider Section
             SizedBox(
               height: 400,
               width: MediaQuery.of(context).size.width,

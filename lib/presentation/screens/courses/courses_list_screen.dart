@@ -6,6 +6,7 @@ import '../../providers/course_provider.dart';
 import '../../providers/auth_provider.dart';
 import 'enrolled_courses_view.dart';
 import 'widgets/course_card.dart';
+import '../../widgets/glass_container.dart';
 
 class CoursesScreen extends ConsumerStatefulWidget {
   const CoursesScreen({super.key});
@@ -40,12 +41,11 @@ class _CoursesScreenState extends ConsumerState<CoursesScreen> {
           children: [
             const SizedBox(height: 20),
             // Tabs
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(30),
-                color: Colors.grey[200],
-              ),
+
+            GlassContainer(
+              borderRadius: 30,
               padding: const EdgeInsets.all(4),
+              opacity: 0.2,
               child: Row(
                 children: [
                   _tabButton("All Courses", 0),
@@ -186,9 +186,18 @@ class _CoursesScreenState extends ConsumerState<CoursesScreen> {
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: selected
-                ? Theme.of(context).colorScheme.primary
+                ? Theme.of(context).colorScheme.primary.withOpacity(0.8)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(25),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    )
+                  ]
+                : null,
           ),
           alignment: Alignment.center,
           child: Text(

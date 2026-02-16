@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../domain/entities/testimonial.dart';
 import '../DashboardColors.dart';
+import '../../../widgets/glass_container.dart';
 
 class TestimonialCard extends StatelessWidget {
   final Testimonial testimonial;
@@ -19,19 +20,10 @@ class TestimonialCard extends StatelessWidget {
         alignment: Alignment.topCenter,
         children: [
           // Card Content
-          Container(
+          GlassContainer(
             padding: const EdgeInsets.fromLTRB(24, 60, 24, 24), // Top padding for image space
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 15,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
+            borderRadius: 24,
+            opacity: 0.8,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

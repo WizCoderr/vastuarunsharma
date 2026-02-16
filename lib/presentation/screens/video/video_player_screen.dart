@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../../../core/constants/route_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/course.dart';
@@ -59,11 +59,6 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       _availableLiveClass = null; // Reset live class
     });
 
-    // For YouTube integration, we assume lecture.videoUrl is the YouTube URL.
-    // If we were using cached streams, we might need to handle that diffrently,
-    // but typically YouTube streams aren't cached the same way as MP4s.
-    // We'll prioritize the direct videoUrl which should be a YouTube link.
-
     String videoUrl = lecture.videoUrl;
 
     if (videoUrl.isEmpty) {
@@ -107,10 +102,14 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     // Initialize player with whatever URL we found (or empty)
     _videoPlayerNotifier.initialize(videoUrl, lecture);
 
+    // Listen for completion handled via provider state listener in build method
+
     setState(() {
       _isLoadingContent = false;
     });
   }
+  
+
 
   void _playLecture(Course course, int sectionIndex, int lectureIndex) {
     final section = course.sections[sectionIndex];
@@ -186,105 +185,84 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     }
     return false;
   }
+  
+  Future<void> _onVideoEnded() async {
+      // Called when video ends
+      if (_currentLecture != null) {
+          final req = ProgressUpdateRequest(
+            lectureId: _currentLecture!.id,
+            courseId: widget.courseId,
+            status: 'COMPLETED',
+            watchedDuration: 0, // Duration tracking tricky with iframe without proper metadata stream mapping
+          );
+          _saveProgress(req);
+      }
+  }
 
   @override
   Widget build(BuildContext context) {
     final courseAsync = ref.watch(courseDetailsProvider(widget.courseId));
-    final playerState = ref.watch(videoPlayerProvider);
-
-    // Listen for completion
-    ref.listen(videoPlayerProvider, (previous, next) {
-      if (next != null &&
-          next.isCompleted &&
-          (previous == null || !previous.isCompleted)) {
-        if (next.currentLecture != null) {
-          final req = ProgressUpdateRequest(
-            lectureId: next.currentLecture!.id,
-            courseId: widget.courseId,
-            status: 'COMPLETED',
-            watchedDuration: next.position.inSeconds,
-          );
-          _saveProgress(req);
-        }
-      }
-    });
-
-
-
-    // If fullscreen is active in provider/state, YoutubePlayerBuilder handles it,
-    // effectively pushing a new route. We just build the normal scaffold here.
-
-    return YoutubePlayerBuilder(
-      player: YoutubePlayer(
-        controller:
-            playerState?.controller ??
-            YoutubePlayerController(initialVideoId: ''),
-        showVideoProgressIndicator: true,
-        progressIndicatorColor: AppColors.primary,
-        onReady: () {
-          // Can add listeners here if needed
-        },
+    
+    // Iframe player handles fullscreen overlay internally or differently. 
+    // We just return Scaffold.
+    
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              context.pop();
+            } else {
+              context.go(RouteConstants.courseDetailsPath(widget.courseId));
+            }
+          },
+        ),
+        title: courseAsync.when(
+          data: (course) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                course.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                'Lecture ${_getCurrentLectureNumber(course)} of ${_getTotalLectures(course)}',
+                style: TextStyle(
+                  color: AppColors.secondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+          loading: () => const Text(
+            'Loading...',
+            style: TextStyle(color: Colors.white),
+          ),
+          error: (error, stack) =>
+              const Text('Error', style: TextStyle(color: Colors.white)),
+        ),
       ),
-      builder: (context, player) {
-        return Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(
-            backgroundColor: Colors.black,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () {
-                if (Navigator.of(context).canPop()) {
-                  context.pop();
-                } else {
-                  context.go(RouteConstants.courseDetailsPath(widget.courseId));
-                }
-              },
-            ),
-            title: courseAsync.when(
-              data: (course) => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    course.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    'Lecture ${_getCurrentLectureNumber(course)} of ${_getTotalLectures(course)}',
-                    style: TextStyle(
-                      color: AppColors.secondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ],
-              ),
-              loading: () => const Text(
-                'Loading...',
-                style: TextStyle(color: Colors.white),
-              ),
-              error: (error, stack) =>
-                  const Text('Error', style: TextStyle(color: Colors.white)),
-            ),
-          ),
-          body: courseAsync.when(
-            data: (course) => _buildContent(course, player),
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
-            error: (error, stack) => _buildError(error),
-          ),
-        );
-      },
+      body: courseAsync.when(
+        data: (course) => _buildContent(course),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+        error: (error, stack) => _buildError(error),
+      ),
     );
   }
 
-  Widget _buildContent(Course course, Widget playerWidget) {
+  Widget _buildContent(Course course) {
     if (course.sections.isEmpty) {
       return const Center(
         child: Text(
@@ -305,6 +283,14 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     }
 
     final playerState = ref.watch(videoPlayerProvider);
+    final controller = playerState?.controller;
+
+    // Listen for completion
+    ref.listen(videoPlayerProvider, (previous, next) {
+      if (next?.isCompleted == true && previous?.isCompleted != true) {
+         _onVideoEnded();
+      }
+    });
 
     return Column(
       children: [
@@ -324,13 +310,20 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                     style: const TextStyle(color: Colors.white),
                   ),
                 )
-              : playerWidget,
+              : (controller != null)
+                  ? YoutubePlayer(
+                      controller: controller,
+                      aspectRatio: 16 / 9,
+                    )
+                  : const Center(
+                      child: CircularProgressIndicator(color: AppColors.primary),
+                    ),
         ),
 
         // Course Info Header
         _buildCourseInfoHeader(course),
-
-        // Lecture navigation
+        
+        // Navigation
         _buildNavigationControls(course),
 
         // Course Content List

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:vastuarunsharma/presentation/screens/dashboard/DashboardColors.dart';
 
 class InquiryCard extends StatefulWidget {
   const InquiryCard({super.key});
@@ -57,8 +58,7 @@ class _InquiryCardState extends State<InquiryCard> {
                 backgroundColor: Colors.green,
               ),
             );
-            // Optional: Clear form after successful launch
-            // _formKey.currentState!.reset();
+            _formKey.currentState!.reset();
           }
         } else {
           throw 'Could not launch WhatsApp';
@@ -86,9 +86,9 @@ class _InquiryCardState extends State<InquiryCard> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF29B6F6), // Light Blue
-            Color(0xFFFFA726), // Orange
-            Color(0xFFFF7043), // Deep Orange
+            DashboardColors.background, 
+            DashboardColors.accentGold,
+            DashboardColors.background,
           ],
           stops: [0.0, 0.7, 1.0],
         ),
@@ -111,7 +111,7 @@ class _InquiryCardState extends State<InquiryCard> {
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: DashboardColors.textPrimary,
                 letterSpacing: 0.5,
               ),
             ),

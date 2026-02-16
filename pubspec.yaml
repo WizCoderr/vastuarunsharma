@@ -15,7 +15,7 @@ dependencies:
   dio: ^5.9.0
   razorpay_flutter: ^1.4.0
   # Video Player - YouTube
-  youtube_player_flutter: ^9.0.1
+  youtube_player_iframe: ^5.1.2
   # For video caching
   path_provider: ^2.1.5
   flutter_native_splash: ^2.4.7
@@ -36,6 +36,7 @@ dependencies:
   camera: ^0.11.3+1
   share_plus: ^12.0.1
   flutter_launcher_icons: ^0.14.4
+  google_nav_bar: ^5.0.7
 
 dev_dependencies:
   flutter_test:
@@ -53,7 +54,7 @@ flutter_native_splash:
   image: assets/images/vas.png
   android: true
   android_12:
-    image: assets/images/android-12-icon.png
+    image: assets/images/android-12-splash.png
     color: "#FFFFFF"
   ios: true
   fullscreen: true

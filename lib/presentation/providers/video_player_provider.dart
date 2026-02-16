@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../../domain/entities/course.dart';
 
 /// State class for video player
@@ -63,7 +62,7 @@ class VideoPlayerNotifier extends Notifier<VideoPlayerState?> {
   @override
   VideoPlayerState? build() {
     ref.onDispose(() {
-      _controller?.dispose();
+      _controller?.close();
     });
     return null;
   }
@@ -71,7 +70,7 @@ class VideoPlayerNotifier extends Notifier<VideoPlayerState?> {
   /// Initialize the player with a video URL
   void initialize(String videoUrl, Lecture lecture) {
     // Extract ID
-    final videoId = YoutubePlayer.convertUrlToId(videoUrl);
+    final videoId = YoutubePlayerController.convertUrlToId(videoUrl);
     if (videoId == null) {
       state = VideoPlayerState(
         errorMessage: 'Invalid YouTube URL',
@@ -81,17 +80,18 @@ class VideoPlayerNotifier extends Notifier<VideoPlayerState?> {
     }
 
     // Dispose existing if any
-    _controller?.dispose();
+    _controller?.close();
 
     // Create new controller
     _controller = YoutubePlayerController(
-      initialVideoId: videoId,
-      flags: const YoutubePlayerFlags(
-        autoPlay: true,
-        mute: false,
-        enableCaption: false,
+      params: const YoutubePlayerParams(
+        showControls: true,
+        showFullscreenButton: true,
+        strictRelatedVideos: true,
       ),
     );
+
+    _controller?.loadVideoById(videoId: videoId);
 
     // Initial state
     state = VideoPlayerState(
@@ -104,49 +104,50 @@ class VideoPlayerNotifier extends Notifier<VideoPlayerState?> {
   }
 
   void _setupListeners() {
-    _controller?.addListener(() {
-      if (_controller == null || !_controller!.value.isReady) return;
-
-      final value = _controller!.value;
-
-      // Check for completion
-      // YoutubePlayerController doesn't have a direct 'completed' event stream in the same way,
-      // but we can check playerState.
-      final isEnded = value.playerState == PlayerState.ended;
-
-      state = state?.copyWith(
-        isPlaying: value.isPlaying,
-        isBuffering: value.playerState == PlayerState.buffering,
-        position: value.position,
-        duration: value.metaData.duration,
-        volume: value.volume.toDouble(),
-        // Check fullscreen from controller?? No, usually managed by UI wrapper in flutter youtube player
-        // But we store it here for UI sync
-        isCompleted: isEnded,
-        errorMessage: value.hasError
-            ? 'Playback Error: ${value.errorCode}'
-            : null,
-      );
+    // Listen to video state changes
+    _controller?.setFullScreenListener((isFullScreen) {
+      state = state?.copyWith(isFullscreen: isFullScreen);
     });
+
+    if (_controller != null) {
+      Stream<YoutubePlayerValue> stream = _controller!.stream;
+
+      stream.listen((value) {
+        final isPlaying = value.playerState == PlayerState.playing;
+        final isBuffering = value.playerState == PlayerState.buffering;
+        final isCompleted = value.playerState == PlayerState.ended;
+
+        // Only update if state changed to avoid unnecessary rebuilds
+        if (state?.isPlaying != isPlaying ||
+            state?.isBuffering != isBuffering ||
+            state?.isCompleted != isCompleted) {
+          state = state?.copyWith(
+            isPlaying: isPlaying,
+            isBuffering: isBuffering,
+            isCompleted: isCompleted,
+            duration: value.metaData.duration, // Update duration if available
+          );
+        }
+      });
+    }
   }
 
   void play() {
-    _controller?.play();
+    _controller?.playVideo();
   }
 
   void pause() {
-    _controller?.pause();
+    _controller?.pauseVideo();
   }
 
   void stop() {
-    _controller?.pause();
-    // Youtube player doesn't have stop? usually pause and seek to 0
-    _controller?.seekTo(Duration.zero);
+    _controller?.stopVideo();
     state = state?.copyWith(isPlaying: false, position: Duration.zero);
   }
 
-  void togglePlayPause() {
-    if (state?.isPlaying ?? false) {
+  void togglePlayPause() async {
+    final state = await _controller?.playerState;
+    if (state == PlayerState.playing) {
       pause();
     } else {
       play();
@@ -154,47 +155,26 @@ class VideoPlayerNotifier extends Notifier<VideoPlayerState?> {
   }
 
   void seek(Duration position) {
-    _controller?.seekTo(position);
-  }
-
-  void seekForward(int seconds) {
-    final current = state?.position ?? Duration.zero;
-    final total = state?.duration ?? Duration.zero;
-    final newPos = current + Duration(seconds: seconds);
-    seek(newPos < total ? newPos : total);
-  }
-
-  void seekBackward(int seconds) {
-    final current = state?.position ?? Duration.zero;
-    final newPos = current - Duration(seconds: seconds);
-    seek(newPos > Duration.zero ? newPos : Duration.zero);
-  }
-
-  void setVolume(double volume) {
-    _controller?.setVolume(volume.toInt());
-  }
-
-  void toggleMute() {
-    if ((state?.volume ?? 0) > 0) {
-      _controller?.mute();
-    } else {
-      _controller?.unMute();
-      setVolume(100);
-    }
+    _controller?.seekTo(seconds: position.inSeconds.toDouble());
   }
 
   void setFullscreen(bool isFullscreen) {
+    if (isFullscreen) {
+      _controller?.enterFullScreen();
+    } else {
+      _controller?.exitFullScreen();
+    }
     state = state?.copyWith(isFullscreen: isFullscreen);
   }
 
-  void reload(String videoUrl, Lecture lecture) {
-    initialize(videoUrl, lecture);
-  }
-
   void disposePlayer() {
-    _controller?.dispose();
+    _controller?.close();
     _controller = null;
-    state = null;
+    // Delay state update to avoid 'modify provider during build' error
+    // when called from widget dispose()
+    Future.microtask(() {
+      state = null;
+    });
   }
 }
 
@@ -205,7 +185,29 @@ final videoPlayerProvider =
     });
 
 /// Provider for current lecture index in a course
-final currentLectureIndexProvider = StateProvider<int>((ref) => 0);
+final currentLectureIndexProvider = NotifierProvider<LectureIndexNotifier, int>(
+  () {
+    return LectureIndexNotifier();
+  },
+);
+
+class LectureIndexNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void set(int value) => state = value;
+}
 
 /// Provider for current section index in a course
-final currentSectionIndexProvider = StateProvider<int>((ref) => 0);
+final currentSectionIndexProvider = NotifierProvider<SectionIndexNotifier, int>(
+  () {
+    return SectionIndexNotifier();
+  },
+);
+
+class SectionIndexNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void set(int value) => state = value;
+}

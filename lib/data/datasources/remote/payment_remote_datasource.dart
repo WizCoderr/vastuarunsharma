@@ -135,4 +135,53 @@ class PaymentRemoteDataSource {
       rethrow;
     }
   }
+
+  Future<bool> freeEnroll(String courseId) async {
+    try {
+      if (courseId.trim().isEmpty) {
+        throw Exception('courseId is required');
+      }
+
+      final payload = {'courseId': courseId};
+      debugPrint('FreeEnroll payload: $payload');
+
+      final resp = await client.post(ApiEndpoints.freeEnroll, data: payload);
+
+      debugPrint('FreeEnroll response status: ${resp.statusCode}');
+      debugPrint('FreeEnroll response body: ${resp.data}');
+
+      // Handle null or empty response
+      if (resp.data == null) {
+        throw Exception('Empty response from server');
+      }
+
+      if (resp.data is! Map<String, dynamic>) {
+        throw Exception(
+          'Invalid response format: expected JSON object, got ${resp.data.runtimeType}',
+        );
+      }
+
+      final api = ApiResponse<dynamic>.fromJson(
+        resp.data as Map<String, dynamic>,
+        (j) => j,
+      );
+
+      if (api.success) {
+        return true;
+      }
+
+      final errMsg = api.message ?? 'Free enrollment failed: ${resp.data}';
+      throw Exception(errMsg);
+    } on DioException catch (e) {
+      final uri = e.requestOptions.uri.toString();
+      final status = e.response?.statusCode;
+      final body = e.response?.data;
+      final msg = 'FreeEnroll failed: $uri -> $status ${body ?? e.message}';
+      debugPrint(msg);
+      throw Exception(msg);
+    } catch (e) {
+      debugPrint('FreeEnroll unexpected error: $e');
+      rethrow;
+    }
+  }
 }

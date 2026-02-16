@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/route_constants.dart';
 import '../../../../domain/entities/live_class.dart';
+import '../../../widgets/glass_container.dart';
 
 class LiveClassBanner extends StatelessWidget {
   final LiveClass liveClass;
@@ -17,22 +18,21 @@ class LiveClassBanner extends StatelessWidget {
       onTap: () {
         context.push(RouteConstants.courseDetailsPath(liveClass.courseId));
       },
-      child: Container(
+      child: GlassContainer(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.red.shade700, Colors.red.shade500],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.red.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
+        borderRadius: 16,
+        // Override the default white gradient with a red glass effect
+        gradient: LinearGradient(
+          colors: [
+            Colors.red.shade700.withOpacity(0.85),
+            Colors.red.shade500.withOpacity(0.75),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: Colors.red.shade200.withOpacity(0.3),
+          width: 1,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,8 +45,9 @@ class LiveClassBanner extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white24,
+                    color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withOpacity(0.3)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -105,6 +106,10 @@ class LiveClassBanner extends StatelessWidget {
                   foregroundColor: Colors.red.shade700,
                   disabledBackgroundColor: Colors.white24,
                   disabledForegroundColor: Colors.white38,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
                 ),
                 child: Text(
                   isLive

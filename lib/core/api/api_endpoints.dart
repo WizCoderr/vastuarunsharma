@@ -36,4 +36,5 @@ class ApiEndpoints {
   // Payments
   static const String createrazorpayorder = '/api/payments/razorpay/order';
   static const String verifyPayment = '/api/payments/razorpay/verify';
+  static const String freeEnroll = '/api/payments/free-enroll';
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vastuarunsharma/presentation/screens/dashboard/DashboardColors.dart';
 import '../../../core/constants/route_constants.dart';
+import '../../widgets/glass_container.dart';
 
 class CompassHomeScreen extends StatelessWidget {
   const CompassHomeScreen({super.key});
@@ -81,25 +82,15 @@ class CompassHomeScreen extends StatelessWidget {
           onTap();
         }
       },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+      child: GlassContainer(
+        borderRadius: 12,
         padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 color: DashboardColors.accentGold,
               ),
@@ -112,7 +103,7 @@ class CompassHomeScreen extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: DashboardColors.textPrimary,
               ),
             ),
           ],

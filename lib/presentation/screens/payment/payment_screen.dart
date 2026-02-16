@@ -107,6 +107,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
   Future<void> _startPayment(double amount) async {
     try {
+      // Check for free course
+      if (amount <= 0) {
+        await _handleFreeEnrollment();
+        return;
+      }
+
       final orderData = await ref
           .read(paymentControllerProvider.notifier)
           .createOrder(widget.courseId);
@@ -114,9 +120,18 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       if (orderData != null) {
         _currentOrderId = orderData['id'];
 
+        // Heuristic: If backend returns amount in Rupees (e.g. 500) instead of Paise (50000),
+        // we correct it here. Expected Paise is roughly amount * 100.
+        // If the returned value is close to 'amount' (Rupees) vs 'amount * 100' (Paise),
+        // we multiply by 100.
+        var paymentAmount = orderData['amount'];
+        if (paymentAmount is int && paymentAmount < (amount * 50)) {
+             paymentAmount = paymentAmount * 100;
+        }
+
         var options = {
           'key': orderData['key'],
-          'amount': orderData['amount'],
+          'amount': paymentAmount,
           'name': 'Vastu Arun Sharma',
           'description': orderData['description'],
           'order_id': orderData['id'],
@@ -133,6 +148,30 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Failed to initiate payment: $e")));
+    }
+  }
+
+  Future<void> _handleFreeEnrollment() async {
+    try {
+      final success = await ref
+          .read(paymentControllerProvider.notifier)
+          .freeEnroll(widget.courseId);
+
+      if (success && mounted) {
+        ref.refreshAfterEnrollment();
+        ref.refreshCourseDetails(widget.courseId);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Enrollment Successful!")),
+        );
+        context.go(RouteConstants.enrollmentPath(widget.courseId));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Enrollment Failed: $e")));
+      }
     }
   }
 
