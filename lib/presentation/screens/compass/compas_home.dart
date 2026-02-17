@@ -48,15 +48,9 @@ class CompassHomeScreen extends StatelessWidget {
                   ),
                   _buildCompassCard(
                     context,
-                    title: "32 Zone Vastu Compass",
+                    title: "42 Devta Vastu Compass",
                     icon: Icons.grid_on, // Placeholder
                     route: RouteConstants.compassThirtyTwo,
-                  ),
-                  _buildCompassCard(
-                    context,
-                    title: "AppliedVastu Chakra",
-                    icon: Icons.change_history, // Placeholder
-                    route: RouteConstants.compassChakra,
                   ),
                 ],
               ),

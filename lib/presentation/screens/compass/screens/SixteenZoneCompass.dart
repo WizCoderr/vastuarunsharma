@@ -129,7 +129,11 @@ class _SixteenZoneCompassState extends State<SixteenZoneCompass>
     _compassSubscription = FlutterCompass.events?.listen((event) {
       if (mounted) {
         setState(() {
-          _heading = event.heading;
+          double? heading = event.heading;
+          if (heading != null && heading < 0) {
+            heading = heading + 360;
+          }
+          _heading = heading;
         });
       }
     });

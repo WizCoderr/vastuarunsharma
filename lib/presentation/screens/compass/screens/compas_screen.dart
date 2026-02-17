@@ -134,7 +134,11 @@ class _CompassScreenState extends State<CompassScreen>
     _compassSubscription = FlutterCompass.events?.listen((event) {
       if (mounted) {
         setState(() {
-          _heading = event.heading;
+          double? heading = event.heading;
+          if (heading != null && heading < 0) {
+            heading = heading + 360;
+          }
+          _heading = heading;
         });
       }
     });
@@ -371,8 +375,6 @@ class _CompassScreenState extends State<CompassScreen>
             // Layer 1.5: Crosshairs (only if map or camera is shown)
             if (_showMap || _showCamera)
               Positioned.fill(child: CustomPaint(painter: CrosshairPainter())),
-
-            // Layer 2: UI Overlay (Fixed Elements)
             SafeArea(
               child: Stack(
                 children: [
@@ -603,10 +605,7 @@ class _CompassScreenState extends State<CompassScreen>
                           ],
                         ),
                       ),
-
                       const SizedBox(height: 20),
-
-                      // Bottom Actions
                       Padding(
                         padding: const EdgeInsets.only(bottom: 20.0),
                         child: Row(
@@ -638,9 +637,6 @@ class _CompassScreenState extends State<CompassScreen>
                 ],
               ),
             ),
-
-            // Layer 3: Movable Compass Dial
-            // Placed after SafeArea to be on top, but controlled by Positioned
             if (_compassOffset != null)
               Positioned(
                 left: _compassOffset!.dx,
@@ -658,15 +654,12 @@ class _CompassScreenState extends State<CompassScreen>
                   ),
                 ),
               ),
-
-            // Layer 4: Custom Zoom Controls (Only in Map Mode)
             if (_showMap)
               Positioned(
                 bottom: 120, // Adjust to be above bottom actions
                 right: 16,
                 child: Column(
                   children: [
-                    // Location Reset Button
                     Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
@@ -703,7 +696,6 @@ class _CompassScreenState extends State<CompassScreen>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // Zoom Buttons Container
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -740,7 +732,6 @@ class _CompassScreenState extends State<CompassScreen>
                             height: 1,
                             color: Colors.white24,
                           ),
-                          // Zoom Out
                           InkWell(
                             onTap: () {
                               _mapController?.animateCamera(
