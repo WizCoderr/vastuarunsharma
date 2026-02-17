@@ -13,6 +13,9 @@ import 'package:gal/gal.dart';
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'dart:math' as math;
+import 'package:sensors_plus/sensors_plus.dart';
+
 import '../../../../core/constants/route_constants.dart';
 import '../../../widgets/compass/sixteen_zone_compass_dial.dart';
 import '../../../widgets/compass/compass_control_button.dart';
@@ -45,7 +48,8 @@ class _SixteenZoneCompassState extends State<SixteenZoneCompass>
 
   // Screenshot & UI
   final ScreenshotController _screenshotController = ScreenshotController();
-  Offset? _compassOffset;
+  StreamSubscription<MagnetometerEvent>? _magnetometerSubscription;
+  double _magneticField = 0.0;
 
   @override
   void initState() {
@@ -54,6 +58,20 @@ class _SixteenZoneCompassState extends State<SixteenZoneCompass>
     _initCompass();
     _initLocation();
     _initCamera();
+    _initMagnetometer();
+  }
+
+  void _initMagnetometer() {
+    _magnetometerSubscription = magnetometerEventStream().listen((event) {
+      final double strength = math.sqrt(
+        event.x * event.x + event.y * event.y + event.z * event.z,
+      );
+      if (mounted) {
+        setState(() {
+          _magneticField = strength;
+        });
+      }
+    });
   }
 
   Future<void> _initCamera() async {
@@ -272,6 +290,7 @@ class _SixteenZoneCompassState extends State<SixteenZoneCompass>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _compassSubscription?.cancel();
+    _magnetometerSubscription?.cancel();
     _mapController?.dispose();
     _cameraController?.dispose();
     super.dispose();
@@ -280,14 +299,8 @@ class _SixteenZoneCompassState extends State<SixteenZoneCompass>
   @override
   Widget build(BuildContext context) {
     final double displayHeading = _heading ?? 0.0;
-    final screenSize = MediaQuery.of(context).size;
-    const double compassSize = 320.0; // Matches dial size
-
-    // Initialize position if not set
-    _compassOffset ??= Offset(
-      (screenSize.width - compassSize) / 2,
-      (screenSize.height - compassSize) / 2,
-    );
+    // final screenSize = MediaQuery.of(context).size; // Unused now
+    // const double compassSize = 320.0; // Matches dial size
 
     final bool isBackgroundMode = _showMap || _showCamera;
 
@@ -398,9 +411,7 @@ class _SixteenZoneCompassState extends State<SixteenZoneCompass>
                     ),
                   ),
 
-                  const Spacer(),
-
-                  // Bottom Info Section
+                  // Info Section - Moved to Top
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24.0,
@@ -505,13 +516,13 @@ class _SixteenZoneCompassState extends State<SixteenZoneCompass>
                                 ),
                                 children: [
                                   const TextSpan(text: "Strength: "),
-                                  TextSpan(
-                                    text: "57 μT",
-                                    style: const TextStyle(
-                                      color: Colors.red,
-                                      fontWeight: FontWeight.bold,
+                                    TextSpan(
+                                      text: "${_magneticField.toStringAsFixed(0)} μT",
+                                      style: const TextStyle(
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                  ),
                                 ],
                               ),
                             ),
@@ -520,6 +531,8 @@ class _SixteenZoneCompassState extends State<SixteenZoneCompass>
                       ],
                     ),
                   ),
+
+                  const Spacer(),
 
                   // Bottom Actions
                   Padding(
@@ -552,23 +565,13 @@ class _SixteenZoneCompassState extends State<SixteenZoneCompass>
               ),
             ),
 
-            // Layer 3: Movable Compass Dial
-            if (_compassOffset != null)
-              Positioned(
-                left: _compassOffset!.dx,
-                top: _compassOffset!.dy,
-                child: GestureDetector(
-                  onPanUpdate: (details) {
-                    setState(() {
-                      _compassOffset = _compassOffset! + details.delta;
-                    });
-                  },
-                  child: SixteenZoneCompassDial(
-                    heading: displayHeading,
-                    isMapMode: isBackgroundMode,
-                  ),
-                ),
+            // Layer 3: Centered Compass Dial
+            Center(
+              child: SixteenZoneCompassDial(
+                heading: displayHeading,
+                isMapMode: isBackgroundMode,
               ),
+            ),
 
             // Zoom Controls for Map
             if (_showMap)

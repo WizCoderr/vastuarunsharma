@@ -6,170 +6,217 @@ class ThirtyTwoZonePainter extends CustomPainter {
   final bool isMapMode;
 
   ThirtyTwoZonePainter({required this.heading, this.isMapMode = false});
-
-  // 32 Zones Data
-  // Starting from North (0 degrees) and going Clockwise?
-  // Vastu zones are usually N1 to N8, E1 to E8, etc.
-  // Standard Vastu Purush Mandala sequence clockwise from NE / N.
-  // We will map 0 degrees to North (Soma/Bhallat area).
-  // Each zone is 11.25 degrees.
+  
   static final List<VastuZone> zones = [
-    // North (N4, N5 is center North). 
-    // Let's start from 0 degrees (North) which is usually the border of N4/N5 or center of N.
-    // Assuming 0 is North center.
-    // N4 (Bhallat) and N5 (Soma) share North.
-    // 0 degrees is between N4 and N5? Or center of a generic "N"?
-    // Let's use the sequence starting from 11.25/2 (offset) or just standard listing.
+    VastuZone("N5", "BHALLAT", "SOLUTIONS", const Color(0xFF42A5F5), 0), // Blue
+    VastuZone("N6", "SOMA", "HEALTH & IMMUNITY", const Color(0xFF42A5F5), 11.25), // Blue
+    VastuZone("N7", "BHUJAG", "IMMUNITY", const Color(0xFF42A5F5), 22.5), // Blue
+    VastuZone("N8", "ADITI", "MIND CLARITY", const Color(0xFF42A5F5), 33.75), // Blue
+    VastuZone("E1", "DITI", "VISION", const Color(0xFF42A5F5), 45), // Blue
+    VastuZone("E2", "SHIKHI", "FOCUS", const Color(0xFF42A5F5), 56.25), // Blue
+    VastuZone("E3", "PARJANYA", "FERTILITY", const Color(0xFF66BB6A), 67.5), // Green
+    VastuZone("E4", "BHRISHA", "THINKING", const Color(0xFF66BB6A), 78.75), // Green
+    VastuZone("E5", "AAKASH", "MANIFESTATION", const Color(0xFF66BB6A), 90), // Green
+    VastuZone("E6", "ANIL", "UPLIFTMENT", const Color(0xFF66BB6A), 101.25), // Green
+    VastuZone("E7", "PUSHA", "STRENGTH", const Color(0xFF66BB6A), 112.5), // Green
+    VastuZone("E8", "VITATHA", "PRETENSE", const Color(0xFF66BB6A), 123.75), // Green
+        VastuZone("S1", "GRIHAKSHAT", "BINDING", const Color(0xFF66BB6A), 135), // Green
+    VastuZone("S2", "YAMA", "ORDER", const Color(0xFF66BB6A), 146.25), // Green
+    VastuZone("S3", "GANDHARV", "MUSIC/ART", const Color(0xFFEF5350), 157.5), // Red
+    VastuZone("S4", "BHRINGRAJ", "EXPENDITURE", const Color(0xFFEF5350), 168.75), // Red
+    VastuZone("S5", "MRIGAH", "CURIOSITY", const Color(0xFFEF5350), 180), // Red
+    VastuZone("S6", "PITRA", "ANCESTORS", const Color(0xFFFBC02D), 191.25), // Yellow
+    VastuZone("S7", "DAUWARIKA", "KNOWLEDGE", const Color(0xFFFBC02D), 202.5), // Yellow
+    VastuZone("S8", "SUGREEV", "VIDYA", const Color(0xFFFBC02D), 213.75), // Yellow
+    VastuZone("W1", "PUSHPADANT", "ASSISTANCE", const Color(0xFFFBC02D), 225), // Yellow
+    VastuZone("W2", "VARUN", "OBLIVION", const Color(0xFFFBC02D), 236.25), // Yellow
+    VastuZone("W3", "ASUR", "ILLUSION", const Color(0xFFECEFF1), 247.5), // Light Grey
+    VastuZone("W4", "SOSHA", "GRIEF", const Color(0xFFECEFF1), 258.75), // Light Grey
+    VastuZone("W5", "PAPAYAKSHMA", "DISEASE", const Color(0xFFECEFF1), 270), // Light Grey
+    VastuZone("W6", "ROGA", "SUPPORT", const Color(0xFFECEFF1), 281.25), // Light Grey
+    VastuZone("W7", "NAGA", "CRAVING", const Color(0xFFECEFF1), 292.5), // Light Grey
+    VastuZone("W8", "MUKHYA", "CARE", const Color(0xFFECEFF1), 303.75), // Light Grey
     
-    // N1 to N8: North Quadrant
-    // NE: Shikhi (approx 45 deg)
-    // Let's list clockwise from Real North (0 deg).
-    // Zones are 11.25 deg each.
-    // 1. Soma (N5) - North
-    // 2. Bhujag/Sarpa (N6) 
-    // 3. Aditi (N7)
-    // 4. Diti (N8)
-    // 5. Shikhi (NE1) - NE
-    // 6. Parjanya (NE2)
-    // 7. Jayant (E1)
-    // 8. Mahendra/Indra (E2)
-    // 9. Surya (E3) - East
-    // 10. Satya (E4)
-    // 11. Bhrisha (E5)
-    // 12. Antariksha (SE1)
-    // 13. Anil (SE2)
-    // 14. Pusha (SE3)
-    // 15. Vitatha (S1)
-    // 16. Grihakshta (S2)
-    // 17. Yama (S3) - South
-    // 18. Gandharva (S4)
-    // 19. Bhringraj (S5)
-    // 20. Mriga (S6)
-    // 21. Pitra (SW1) - SW
-    // 22. Dauvarik (SW2)
-    // 23. Sugriva (W1)
-    // 24. Pushpadanta (W2)
-    // 25. Varuna (W3) - West
-    // 26. Asura (W4)
-    // 27. Shosha (W5)
-    // 28. Papyakshma (NW1)
-    // 29. Roga (NW2)
-    // 30. Naga (NW3)
-    // 31. Mukhya (N1)
-    // 32. Bhallata (N2/N4?) - Wait, the counting is tricky.
+    // North End (N1, N2 also Space/Water transition)
+    VastuZone("N1", "BHALLAT", "ABUNDANCE", const Color(0xFFECEFF1), 315), // Light Grey (Space)
+    VastuZone("N2", "SOMA", "TREASURE", const Color(0xFFECEFF1), 326.25), // Light Grey (Space)
     
-    // Normalized list based on angles (Center of zone):
-    // 0 deg: North.
-    VastuZone("Soma", Colors.blue, 0),        // N5
-    VastuZone("Bhujag", Colors.blue, 11.25),  // N6
-    VastuZone("Aditi", Colors.blue, 22.5),    // N7
-    VastuZone("Diti", Colors.blue, 33.75),    // N8
-    VastuZone("Shikhi", Colors.orange, 45),   // NE1
-    VastuZone("Parjanya", Colors.orange, 56.25), // NE2
-    VastuZone("Jayant", Colors.green, 67.5),  // E1
-    VastuZone("Indra", Colors.green, 78.75),  // E2
-    VastuZone("Surya", Colors.green, 90),     // E3 (East)
-    VastuZone("Satya", Colors.green, 101.25), // E4
-    VastuZone("Bhrisha", Colors.green, 112.5), // E5
-    VastuZone("Akash", Colors.redAccent, 123.75), // SE1
-    VastuZone("Anil", Colors.red, 135),       // SE2
-    VastuZone("Pusha", Colors.red, 146.25),   // SE3
-    VastuZone("Vitatha", Colors.red, 157.5),  // S1
-    VastuZone("Grihakst", Colors.red, 168.75), // S2 (Shortened from Grihakshta)
-    VastuZone("Yama", Colors.redAccent, 180), // S3 (South)
-    VastuZone("Gandhrv", Colors.redAccent, 191.25), // S4 (Shortened from Gandharva)
-    VastuZone("Bhringrj", Colors.yellow, 202.5), // S5 (Shortened from Bhringraj)
-    VastuZone("Mriga", Colors.yellow, 213.75), // S6
-    VastuZone("Pitra", Colors.yellow, 225),   // SW1
-    VastuZone("Dauvarik", Colors.yellow, 236.25), // SW2
-    VastuZone("Sugriva", Colors.grey, 247.5), // W1
-    VastuZone("Pushpdnt", Colors.grey, 258.75), // W2 (Pushpadanta shortened)
-    VastuZone("Varuna", Colors.white, 270),   // W3 (West)
-    VastuZone("Asura", Colors.white, 281.25), // W4
-    VastuZone("Shosha", Colors.white, 292.5), // W5
-    VastuZone("Yakshma", Colors.white, 303.75), // NW1 (Papyakshma)
-    VastuZone("Roga", Colors.white, 315),     // NW2
-    VastuZone("Naga", Colors.blueAccent, 326.25), // NW3
-    VastuZone("Mukhya", Colors.blue, 337.5),  // N1
-    VastuZone("Bhallata", Colors.blue, 348.75), // N2
+    // N3, N4: Water (Blue)
+    VastuZone("N3", "BHUJAG", "MEDICINE", const Color(0xFF42A5F5), 337.5), // Blue
+    VastuZone("N4", "ADITI", "PROTECTION", const Color(0xFF42A5F5), 348.75), // Blue
   ];
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
-    final paint = Paint()
-      ..style = PaintingStyle.fill
-      ..strokeWidth = 1.0;
+    // Anti-alias for smooth edges
+    final paint = Paint()..isAntiAlias = true..style = PaintingStyle.fill;
     
-    // Save rotation
+    // Canvas rotation
     canvas.save();
     canvas.translate(center.dx, center.dy);
     canvas.rotate(-heading * (math.pi / 180));
 
-    // Draw Zones
-    final double zoneToRad = (360 / 32) * (math.pi / 180); // 11.25 degrees in radians
-    
+    // 1. Draw Background White
+    paint.color = Colors.white;
+    canvas.drawCircle(Offset.zero, radius, paint);
+
+    final double zoneToRad = (360 / 32) * (math.pi / 180);
+    final Rect fullRect = Rect.fromCircle(center: Offset.zero, radius: radius);
+
+    // 2. Draw Colored Pie Slices (The main colors)
     for (int i = 0; i < zones.length; i++) {
       final zone = zones[i];
+      final double startAngle = (zone.angle - 5.625) * (math.pi / 180) - (math.pi / 2);
       
-      // Calculate start angle. 
-      // zone.angle is the center. Start is center - half width.
-      final double startAngle = (zone.angle - 5.625) * (math.pi / 180) - (math.pi / 2); // -90 to rotate 0 to Top (North)
-      
-      // Paint Slice
-      paint.color = zone.color.withOpacity(isMapMode ? 0.6 : 1.0);
-      final rect = Rect.fromCircle(center: Offset.zero, radius: radius);
-      canvas.drawArc(rect, startAngle, zoneToRad, true, paint);
-
-      // Draw Text with Staggered Radius
-      // Stagger odd/even to avoid overlap in 11.25 degree slices
-      final double textRadius = (i % 2 == 0) ? radius * 0.92 : radius * 0.78;
-      
-      _drawText(canvas, zone.name, zone.angle, textRadius);
+      // Use solid opaque color to ensure visibility
+      paint.color = zone.color; 
+      canvas.drawArc(fullRect, startAngle, zoneToRad, true, paint);
     }
     
-    // Inner Circle (Brahmasthan) - Reduce size slightly to accommodate inner text ring
-    paint.color = Colors.white.withOpacity(isMapMode ? 0.8 : 1.0);
-    canvas.drawCircle(Offset.zero, radius * 0.30, paint);
+    // 3. Draw Overlay Circles to create Rings (Masking)
     
-    // Center Text
-    _drawCenterText(canvas, "Brahma\nSthan");
+    // A. Outer White Ring (For Attributes)
+    // Mask the outer edge to be white
+    // Don't mask, just draw a white annulus?? No, that's hard.
+    // Instead, draw a White Circle that covers everything, but that's wrong (we want inner to show).
+    // Better: Draw the pie slices as they are (full).
+    // THEN draw a Semi-Transparent White circle over the Outer part?
+    // OR just draw distinct rings.
+    
+    // Let's use concentric circles to overwrite the centers for the "Ring" look.
+    
+    // Radii
+    double rAttribute = radius * 0.85; 
+    double rCode = radius * 0.70;
+    // double rDeity = radius * 0.55; 
+    double rCenter = radius * 0.25;
+    
+    // 3.1 Mask for Code Ring (Paint it transparent white/tint over the pie slices?)
+    // Actually, the user wants:
+    // Outer Ring: White (Attributes)
+    // Middle Ring: Tinted (Codes)
+    // Inner Ring: Full Color (Deities)
+    
+    // So:
+    // a) Draw White Circle covering everything from rAttribute outwards?
+    //    No, we want the pie slices to potentially show through or just be white.
+    //    Let's Overwrite Outer Ring with White.
+    
+    // Draw Donut: White Ring from rAttribute to Edge
+    // We can do this by drawing a thick stroke circle?
+    // Center at radius * 0.925, width radius * 0.15
+    final Paint whiteRingPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = (radius - rAttribute);
+      
+    canvas.drawCircle(Offset.zero, rAttribute + (radius - rAttribute)/2, whiteRingPaint);
+    final Paint lightOverlayPaint = Paint()
+      ..color = Colors.white.withOpacity(0.7) // Lighten the color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = (rAttribute - rCode);
+      
+    canvas.drawCircle(Offset.zero, rCode + (rAttribute - rCode)/2, lightOverlayPaint);
+    
+    // c) Deity Ring (rCenter to rCode)
+    // Leave as full color (already drawn).
+    
+    // d) Center Hole (Yellow Brahma Sthan)
+    paint.color = const Color(0xFFFFD600); // Bright Yellow
+    paint.style = PaintingStyle.fill;
+    canvas.drawCircle(Offset.zero, rCenter, paint);
+    
+    // 4. Draw Separator Lines (Black)
+    final linePaint = Paint()
+      ..color = Colors.black87
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+      
+    for (int i = 0; i < zones.length; i++) {
+       final double startAngle = (zones[i].angle - 5.625) * (math.pi / 180) - (math.pi / 2);
+       final lineX = radius * math.cos(startAngle);
+       final lineY = radius * math.sin(startAngle);
+       canvas.drawLine(Offset.zero, Offset(lineX, lineY), linePaint);
+    }
+    
+    // 5. Draw Borders
+    final borderPaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+      
+    canvas.drawCircle(Offset.zero, radius, borderPaint);
+    canvas.drawCircle(Offset.zero, rAttribute, borderPaint);
+    canvas.drawCircle(Offset.zero, rCode, borderPaint);
+    canvas.drawCircle(Offset.zero, rCenter, borderPaint..strokeWidth=2.5); // Thicker center boundary
+    
+    // 6. Draw Texts
+    for (int i = 0; i < zones.length; i++) {
+       final zone = zones[i];
+       final double startAngle = (zone.angle - 5.625) * (math.pi / 180) - (math.pi / 2);
+       final double centerAngle = startAngle + zoneToRad / 2;
+              _drawRotatedText(canvas, zone.deity, centerAngle, (rCenter + rCode)/2, 
+           fontSize: 7, fontWeight: FontWeight.bold);
+           
+       _drawRotatedText(canvas, zone.code, centerAngle, (rCode + rAttribute)/2, 
+           fontSize: 9, fontWeight: FontWeight.w900);
+           
+       
+        if (zone.attribute.isNotEmpty) {
+           _drawRotatedText(canvas, zone.attribute, centerAngle, (rAttribute + radius)/2, 
+             fontSize: 6, fontWeight: FontWeight.w600, maxLines: 2);
+        }
+    }
+    
+    // 7. Center Text
+    _drawCenterText(canvas, "BRAHMA\nSTHAN"); 
+    
+    // 8. Degree Scale & Directions
+    _drawDegreeScale(canvas, radius);
+    _drawDirections(canvas, radius * 0.92);
 
     canvas.restore();
+    
+    // Static Needle pointing UP (Red Triangle)
+    final needlePath = Path();
+    needlePath.moveTo(center.dx, center.dy - radius + 10);
+    needlePath.lineTo(center.dx - 8, center.dy - radius - 15);
+    needlePath.lineTo(center.dx + 8, center.dy - radius - 15);
+    needlePath.close();
+    
+    paint.color = Colors.red;
+    paint.style = PaintingStyle.fill;
+    canvas.drawPath(needlePath, paint);
   }
-  
-  void _drawText(Canvas canvas, String text, double angleDeg, double r) {
+
+  void _drawRotatedText(Canvas canvas, String text, double angleRad, double r, {double fontSize = 10, FontWeight fontWeight = FontWeight.normal, Color color = Colors.black, int maxLines = 1}) {
+    if (text.isEmpty) return;
+
     final textPainter = TextPainter(
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.center,
+      maxLines: maxLines,
     );
-    
-    // Adjust angle to match canvas rotation (-90 offset for North at top)
-    final double angleRad = (angleDeg - 90) * (math.pi / 180);
-    
     textPainter.text = TextSpan(
       text: text,
       style: TextStyle(
-        color: Colors.black.withOpacity(isMapMode ? 0.7 : 1.0),
-        fontSize: 9, // Slightly smaller font
-        fontWeight: FontWeight.w600,
+        color: color,
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        height: 1.0,
       ),
     );
-    textPainter.layout();
+    textPainter.layout(maxWidth: 55); 
     
     final x = r * math.cos(angleRad);
     final y = r * math.sin(angleRad);
     
     canvas.save();
     canvas.translate(x, y);
-    // Rotate text to align with the slice ray
     canvas.rotate(angleRad + math.pi / 2);
-    
-    textPainter.paint(
-      canvas, 
-      Offset(-textPainter.width / 2, -textPainter.height / 2)
-    );
+    textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
     canvas.restore();
   }
 
@@ -178,20 +225,70 @@ class ThirtyTwoZonePainter extends CustomPainter {
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.center,
     );
-    
     textPainter.text = TextSpan(
       text: text,
       style: TextStyle(
-        color: Colors.red.shade900,
-        fontSize: 12,
+        color: Colors.black,
+        fontSize: 14,
         fontWeight: FontWeight.bold,
       ),
     );
     textPainter.layout();
-    textPainter.paint(
-      canvas, 
-      Offset(-textPainter.width / 2, -textPainter.height / 2)
+    textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
+  }
+
+  void _drawDegreeScale(Canvas canvas, double radius) {
+     final tickPaint = Paint()
+      ..color = Colors.black
+      ..strokeWidth = 1;
+      
+     // Basic Ticks
+     for (int i=0; i<360; i+=10) {
+        final angleRad = (i - 90) * (math.pi / 180);
+        final p1 = Offset(radius * math.cos(angleRad), radius * math.sin(angleRad));
+        final p2 = Offset((radius + 5) * math.cos(angleRad), (radius + 5) * math.sin(angleRad));
+        canvas.drawLine(p1, p2, tickPaint);
+     }
+  }
+
+  void _drawDirections(Canvas canvas, double radius) {
+    final List<String> directions = [
+      "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+      "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"
+    ];
+    
+    final textPainter = TextPainter(
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
     );
+    
+    for (int i = 0; i < directions.length; i++) {
+        final double angleDeg = i * 22.5;
+        final double angleRad = (angleDeg - 90) * (math.pi / 180);
+        
+        textPainter.text = TextSpan(
+            text: directions[i],
+            style: const TextStyle(
+                color: Colors.black,
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+            )
+        );
+        textPainter.layout();
+        
+        // Place on the Directions Ring
+        final x = radius * math.cos(angleRad);
+        final y = radius * math.sin(angleRad);
+        
+        canvas.save();
+        canvas.translate(x, y);
+        canvas.rotate(angleRad + math.pi/2);
+        
+        // Background capsule to make it readable over lines? 
+        // Or just text.
+        textPainter.paint(canvas, Offset(-textPainter.width/2, -textPainter.height/2));
+        canvas.restore();
+    }
   }
 
   @override
@@ -201,9 +298,11 @@ class ThirtyTwoZonePainter extends CustomPainter {
 }
 
 class VastuZone {
-  final String name;
+  final String code;
+  final String deity;
+  final String attribute;
   final Color color;
-  final double angle; // Center angle in degrees (0 = North)
+  final double angle;
 
-  VastuZone(this.name, this.color, this.angle);
+  VastuZone(this.code, this.deity, this.attribute, this.color, this.angle);
 }

@@ -71,22 +71,22 @@ class SixteenZoneCompassPainter extends CustomPainter {
     // N, NNE, NE, ENE, E, ESE, SE, SSE, S, SSW, SW, WSW, W, WNW, NW, NNW
     
     final List<Map<String, dynamic>> zones = [
-      {'label': 'N',   'color': const Color(0xFF2196F3)}, // Blue
-      {'label': 'NNE', 'color': const Color(0xFF42A5F5)}, // Light Blue
-      {'label': 'NE',  'color': const Color(0xFF64B5F6)}, // Lighter Blue
-      {'label': 'ENE', 'color': const Color(0xFF43A047)}, // Green
-      {'label': 'E',   'color': const Color(0xFF4CAF50)}, // Green
-      {'label': 'ESE', 'color': const Color(0xFF66BB6A)}, // Light Green
-      {'label': 'SE',  'color': const Color(0xFFE53935)}, // Red
-      {'label': 'SSE', 'color': const Color(0xFFEF5350)}, // Light Red
-      {'label': 'S',   'color': const Color(0xFFD32F2F)}, // Red/Orange
-      {'label': 'SSW', 'color': const Color(0xFFFFB300)}, // Amber
-      {'label': 'SW',  'color': const Color(0xFFFFC107)}, // Amber/Yellow
-      {'label': 'WSW', 'color': const Color(0xFFFFD54F)}, // Yellow
-      {'label': 'W',   'color': const Color(0xFFEEEEEE)}, // White/Grey
-      {'label': 'WNW', 'color': const Color(0xFFE0E0E0)}, // Grey
-      {'label': 'NW',  'color': const Color(0xFFBDBDBD)}, // Grey
-      {'label': 'NNW', 'color': const Color(0xFF90CAF9)}, // Pale Blue/Water-Air mix
+      {'label': 'N',   'color': const Color(0xFF2196F3)}, // Water - Blue
+      {'label': 'NNE', 'color': const Color(0xFF2196F3)}, // Water - Blue
+      {'label': 'NE',  'color': const Color(0xFF2196F3)}, // Water - Blue
+      {'label': 'ENE', 'color': const Color(0xFF4CAF50)}, // Air - Green
+      {'label': 'E',   'color': const Color(0xFF4CAF50)}, // Air - Green
+      {'label': 'ESE', 'color': const Color(0xFF4CAF50)}, // Air - Green
+      {'label': 'SE',  'color': const Color(0xFFF44336)}, // Fire - Red
+      {'label': 'SSE', 'color': const Color(0xFFF44336)}, // Fire - Red
+      {'label': 'S',   'color': const Color(0xFFF44336)}, // Fire - Red
+      {'label': 'SSW', 'color': const Color(0xFFFFEB3B)}, // Earth - Yellow
+      {'label': 'SW',  'color': const Color(0xFFFFEB3B)}, // Earth - Yellow
+      {'label': 'WSW', 'color': const Color(0xFF9E9E9E)}, // Space - Grey
+      {'label': 'W',   'color': const Color(0xFF9E9E9E)}, // Space - Grey
+      {'label': 'WNW', 'color': const Color(0xFF9E9E9E)}, // Space - Grey
+      {'label': 'NW',  'color': const Color(0xFF9E9E9E)}, // Space - Grey
+      {'label': 'NNW', 'color': const Color(0xFF2196F3)}, // Water - Blue
     ];
 
     // Angle offset to center North at top (-pi/2)
@@ -127,8 +127,8 @@ class SixteenZoneCompassPainter extends CustomPainter {
         textPainter.text = TextSpan(
             text: label,
             style: TextStyle(
-                color: Colors.black.withOpacity(opacity),
-                fontSize: 10,
+                color: Colors.white.withOpacity(opacity),
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
             ),
         );

@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:io';
-
+import 'dart:math' as math;
+import 'package:sensors_plus/sensors_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -16,7 +17,6 @@ import 'package:path_provider/path_provider.dart';
 import '../../../../core/constants/route_constants.dart';
 import '../../../widgets/compass/compass_control_button.dart';
 import '../../../widgets/compass/compass_bottom_action.dart';
-import '../../../widgets/compass/thirty_two_zone_painter.dart'; // Import the new painter
 import 'compas_screen.dart'; 
 
 class Thirtytwozonecompass extends StatefulWidget {
@@ -47,7 +47,8 @@ class _ThirtytwozonecompassState extends State<Thirtytwozonecompass>
 
   // Screenshot & UI
   final ScreenshotController _screenshotController = ScreenshotController();
-  Offset? _compassOffset;
+  StreamSubscription<MagnetometerEvent>? _magnetometerSubscription;
+  double _magneticField = 0.0;
 
   @override
   void initState() {
@@ -56,6 +57,20 @@ class _ThirtytwozonecompassState extends State<Thirtytwozonecompass>
     _initCompass();
     _initLocation();
     _initCamera();
+    _initMagnetometer();
+  }
+
+  void _initMagnetometer() {
+    _magnetometerSubscription = magnetometerEventStream().listen((event) {
+      final double strength = math.sqrt(
+        event.x * event.x + event.y * event.y + event.z * event.z,
+      );
+      if (mounted) {
+        setState(() {
+          _magneticField = strength;
+        });
+      }
+    });
   }
 
   Future<void> _initCamera() async {
@@ -268,6 +283,7 @@ class _ThirtytwozonecompassState extends State<Thirtytwozonecompass>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _compassSubscription?.cancel();
+    _magnetometerSubscription?.cancel();
     _mapController?.dispose();
     _cameraController?.dispose();
     super.dispose();
@@ -276,15 +292,8 @@ class _ThirtytwozonecompassState extends State<Thirtytwozonecompass>
   @override
   Widget build(BuildContext context) {
     final double displayHeading = _heading ?? 0.0;
-    final screenSize = MediaQuery.of(context).size;
-    // Maximize size but keep padding.
-    // Ensure it doesn't overflow height-wise with UI
-    final double compassSize = screenSize.width - 40;
-
-    _compassOffset ??= Offset(
-      (screenSize.width - compassSize) / 2,
-      (screenSize.height - compassSize) / 2,
-    );
+    // final screenSize = MediaQuery.of(context).size;
+    // final double compassSize = screenSize.width - 40;
 
     final bool isBackgroundMode = _showMap || _showCamera;
 
@@ -337,7 +346,22 @@ class _ThirtytwozonecompassState extends State<Thirtytwozonecompass>
             if (_showMap || _showCamera)
               Positioned.fill(child: CustomPaint(painter: CrosshairPainter())),
 
-            // Layer 2: UI Overlay
+            // Layer 2: Centered Compass Dial
+            Center(
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width - 20,
+                height: MediaQuery.of(context).size.width - 20,
+                child: Transform.rotate(
+                  angle: -displayHeading * (math.pi / 180),
+                  child: Image.asset(
+                    "assets/images/42Devta.png",
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
+
+            // Layer 3: UI Overlay (Controls, Text, etc.)
             SafeArea(
               child: Stack(
                 children: [
@@ -369,6 +393,27 @@ class _ThirtytwozonecompassState extends State<Thirtytwozonecompass>
                                   ? "Hide Camera"
                                   : "Rear Camera",
                               onTap: _toggleCamera,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Info Section - Moved to Top
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildInfoBox(
+                              "Geo-Coordinate:",
+                              "Latitude: $_latitude\nLongitude: $_longitude",
+                              isBackgroundMode,
+                            ),
+                            _buildInfoBox(
+                              "Magnetic Field:",
+                              "Strength: ${_magneticField.toStringAsFixed(0)} μT",
+                              isBackgroundMode,
+                              valueColor: Colors.red,
                             ),
                           ],
                         ),
@@ -416,29 +461,8 @@ class _ThirtytwozonecompassState extends State<Thirtytwozonecompass>
                           ],
                         ),
                       ),
-
+                      
                       const Spacer(),
-
-                      // Info Section
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _buildInfoBox(
-                              "Geo-Coordinate:",
-                              "Latitude: $_latitude\nLongitude: $_longitude",
-                              isBackgroundMode,
-                            ),
-                            _buildInfoBox(
-                              "Magnetic Field:",
-                              "Strength: 0 μT",
-                              isBackgroundMode,
-                              valueColor: Colors.red,
-                            ),
-                          ],
-                        ),
-                      ),
 
                       const SizedBox(height: 20),
 
@@ -473,65 +497,7 @@ class _ThirtytwozonecompassState extends State<Thirtytwozonecompass>
               ),
             ),
 
-            // Layer 3: Movable Compass Dial
-            if (_compassOffset != null)
-              Positioned(
-                left: _compassOffset!.dx,
-                top: _compassOffset!.dy,
-                child: GestureDetector(
-                  onPanUpdate: (details) {
-                    setState(() {
-                      _compassOffset = _compassOffset! + details.delta;
-                    });
-                  },
-                  child: SizedBox(
-                    width: compassSize,
-                    height: compassSize,
-                    child: CustomPaint(
-                      painter: ThirtyTwoZonePainter(
-                        heading: displayHeading,
-                        isMapMode: isBackgroundMode,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
 
-                  if (_compassOffset != null)
-              Positioned(
-                left: _compassOffset!.dx,
-                top: _compassOffset!.dy,
-                child: IgnorePointer(
-                  child: SizedBox(
-                    width: compassSize,
-                    height: compassSize,
-                    child: Center(
-                      child: Container(
-                        width: 2,
-                        height: compassSize,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.red,
-                              Colors.red.withOpacity(0.5),
-                              Colors.red,
-                            ],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.3),
-                              blurRadius: 2,
-                              spreadRadius: 0,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),

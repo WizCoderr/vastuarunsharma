@@ -38,7 +38,9 @@ class CompassDial extends StatelessWidget {
                     )
                   : CustomPaint(
                       painter: CompassPainter(
-                          heading: heading, isMapMode: isMapMode),
+                        heading: heading,
+                        isMapMode: isMapMode,
+                      ),
                     ),
               // Red Indicator Needle (Lubber Line) for Image Mode
               if (imagePath != null)
@@ -104,17 +106,6 @@ class CompassDial extends StatelessWidget {
               ),
             ),
           ),
-          Positioned(
-            top: 135,
-            child: Text(
-              "Ether",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: isMapMode ? Colors.black.withOpacity(0.6) : Colors.black,
-              ),
-            ),
-          ),
         ],
       ],
     );
@@ -139,24 +130,38 @@ class CompassPainter extends CustomPainter {
     canvas.translate(center.dx, center.dy);
     canvas.rotate(-heading * (math.pi / 180));
 
-    // Draw Sections (Approximate colors from image)
+    // Draw Sections (Vastu Elements)
     final rect = Rect.fromCircle(center: Offset.zero, radius: radius);
 
-    // North (Water - Blue)
-    paint.color = const Color(0xFF0077BE).withOpacity(opacity);
-    canvas.drawArc(rect, -math.pi / 4, math.pi / 2, true, paint);
+    double toRad(double deg) => deg * (math.pi / 180);
+    // Convert azimuth to canvas angle (subtract 90 degrees)
+    double startAngle(double azimuth) => toRad(azimuth - 90);
+    double sweepAngle(double degrees) => toRad(degrees);
 
-    // East (Fire - Red)
-    paint.color = const Color(0xFFE53935).withOpacity(opacity);
-    canvas.drawArc(rect, math.pi / 4, math.pi / 2, true, paint);
+    // 1. Water (326.25 to 56.25) - Blue
+    // Span: 360-326.25 = 33.75. 33.75 + 56.25 = 90 degrees.
+    paint.color = const Color(0xFF2196F3).withOpacity(opacity); // Material Blue
+    canvas.drawArc(rect, startAngle(326.25), sweepAngle(90), true, paint);
 
-    // South (Earth - Yellow)
-    paint.color = const Color(0xFFFFEB3B).withOpacity(opacity);
-    canvas.drawArc(rect, 3 * math.pi / 4, math.pi / 2, true, paint);
+    // 2. Air (56.25 to 123.75) - Green
+    // Span: 123.75 - 56.25 = 67.5 degrees
+    paint.color = const Color(0xFF4CAF50).withOpacity(opacity); // Material Green
+    canvas.drawArc(rect, startAngle(56.25), sweepAngle(67.5), true, paint);
 
-    // West (Air - Grey/White)
-    paint.color = const Color(0xFFB0BEC5).withOpacity(opacity);
-    canvas.drawArc(rect, 5 * math.pi / 4, math.pi / 2, true, paint);
+    // 3. Fire (123.75 to 191.25) - Red
+    // Span: 191.25 - 123.75 = 67.5 degrees
+    paint.color = const Color(0xFFF44336).withOpacity(opacity); // Material Red
+    canvas.drawArc(rect, startAngle(123.75), sweepAngle(67.5), true, paint);
+
+    // 4. Earth (191.25 to 236.25) - Yellow
+    // Span: 236.25 - 191.25 = 45 degrees
+    paint.color = const Color(0xFFFFEB3B).withOpacity(opacity); // Material Yellow
+    canvas.drawArc(rect, startAngle(191.25), sweepAngle(45), true, paint);
+
+    // 5. Space (236.25 to 326.25) - Grey/White
+    // Span: 326.25 - 236.25 = 90 degrees
+    paint.color = const Color(0xFF9E9E9E).withOpacity(opacity); // Material Grey
+    canvas.drawArc(rect, startAngle(236.25), sweepAngle(90), true, paint);
 
     // Inner white circle to create the ring effect
     paint.color = Colors.white.withOpacity(isMapMode ? 0.4 : 1.0);
@@ -192,43 +197,47 @@ class CompassPainter extends CustomPainter {
     }
 
     // Draw Element Labels
-    void drawElement(String text, double angle) {
+    void drawElement(String text, double azimuthOfCenter) {
       textPainter.text = TextSpan(
         text: text,
         style: TextStyle(
           color: Colors.black.withOpacity(opacity),
-          fontSize: 14,
+          fontSize: 12,
           fontWeight: FontWeight.bold,
         ),
       );
       textPainter.layout();
 
-      final r = radius * 0.85; // text radius
+      final angle = startAngle(azimuthOfCenter);
+      final r = radius * 0.60; // Inner label radius
       final x = r * math.cos(angle);
       final y = r * math.sin(angle);
 
       canvas.save();
       canvas.translate(x, y);
-      canvas.rotate(angle + math.pi / 2); // Text follows curve
+      // Align text with radius
+      canvas.rotate(angle + math.pi / 2); 
       textPainter.paint(
           canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
       canvas.restore();
     }
 
-    drawDirection("N", -math.pi / 2); // North
-    drawDirection("E", 0); // East
-    drawDirection("S", math.pi / 2); // South
-    drawDirection("W", math.pi); // West
+    drawDirection("N", -math.pi / 2); 
+    drawDirection("E", 0); 
+    drawDirection("S", math.pi / 2); 
+    drawDirection("W", math.pi); 
 
-    // Draw Elements on Ring
-    // North = Water
-    drawElement("Water", -math.pi / 4);
-    // East = Fire
-    drawElement("Fire", math.pi / 4);
-    // South = Earth
-    drawElement("Earth", 3 * math.pi / 4);
-    // West = Air
-    drawElement("Air", 5 * math.pi / 4);
+    // Draw Elements on Ring using Azimuth Centers
+    // Water (326.25 to 56.25). 326.25 is -33.75. Center = 11.25
+    drawElement("Water", 11.25);
+    // Air (56.25 to 123.75). Center = 90
+    drawElement("Air", 90);
+    // Fire (123.75 to 191.25). Center = 157.5
+    drawElement("Fire", 157.5);
+    // Earth (191.25 to 236.25). Center = 213.75
+    drawElement("Earth", 213.75);
+    // Space (236.25 to 326.25). Center = 281.25
+    drawElement("Space", 281.25);
 
     // Draw Needle (The Star/Cross shape)
     final needlePaint = Paint()
@@ -273,6 +282,32 @@ class CompassPainter extends CustomPainter {
     westPath.lineTo(0, needleWidth);
     westPath.close();
     canvas.drawPath(westPath, needlePaint);
+
+    // Center "Ether" Circle
+    paint.color = Colors.white;
+    canvas.drawCircle(Offset.zero, 25, paint); // White background
+    
+    // "Ether" Text
+    textPainter.text = TextSpan(
+      text: "Ether",
+      style: TextStyle(
+        color: Colors.black,
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    textPainter.layout();
+    textPainter.paint(
+        canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
+
+    // Small Red Triangle/Pointer at center for aesthetics
+     paint.color = Colors.red;
+     Path centerPointer = Path();
+     centerPointer.moveTo(0, 15);
+     centerPointer.lineTo(8, 25);
+     centerPointer.lineTo(-8, 25);
+     centerPointer.close();
+     canvas.drawPath(centerPointer, paint);
 
     canvas.restore();
   }

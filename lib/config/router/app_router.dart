@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:vastuarunsharma/presentation/screens/compass/screens/AdvancedVastuCakra.dart';
 import 'package:vastuarunsharma/presentation/screens/compass/screens/SixteenZoneCompass.dart';
 import 'package:vastuarunsharma/presentation/screens/compass/screens/ThirtytwoZoneCompass.dart';
 import '../../core/constants/route_constants.dart';
@@ -157,11 +156,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 path: '32-zone',
                 builder: (context, state) => const Thirtytwozonecompass(),
               ),
-              GoRoute(
-                name: 'compass-advancedvastucakra',
-                path: 'advancedvastucakra',
-                builder: (context, state) => const Advancedvastucakra(),
-              ),
             ],
           ),
           GoRoute(
@@ -204,7 +198,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           return CompassResultScreen(imagePath: imagePath);
         },
       ),
-
     ],
   );
 });

@@ -32,24 +32,24 @@ class CompassHomeScreen extends StatelessWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
-                childAspectRatio: 0.8, // Card shape
+                childAspectRatio: 0.8,
                 children: [
                   _buildCompassCard(
                     context,
-                    title: "Normal Compass",
-                    icon: Icons.explore, // Placeholder
+                    title: "Vastu Compass",
+                    icon: "assets/images/compass.png",
                     route: RouteConstants.compassNormal,
                   ),
                   _buildCompassCard(
                     context,
                     title: "16 Zone Vastu Compass",
-                    icon: Icons.grid_view, // Placeholder
+                    icon: "assets/images/16zonecompass.png",
                     route: RouteConstants.compassSixteen,
                   ),
                   _buildCompassCard(
                     context,
                     title: "42 Devta Vastu Compass",
-                    icon: Icons.grid_on, // Placeholder
+                    icon: "assets/images/42Devta.png",
                     route: RouteConstants.compassThirtyTwo,
                   ),
                 ],
@@ -64,7 +64,7 @@ class CompassHomeScreen extends StatelessWidget {
   Widget _buildCompassCard(
     BuildContext context, {
     required String title,
-    required IconData icon,
+    required String icon,
     String? route,
     VoidCallback? onTap,
   }) {
@@ -82,20 +82,40 @@ class CompassHomeScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: DashboardColors.accentGold,
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth.isInfinite ||
+                      constraints.maxHeight.isInfinite) {
+                    return const SizedBox();
+                  }
+                  final size = constraints.biggest.shortestSide;
+                  return Center(
+                    child: Container(
+                      width: size,
+                      height: size,
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: DashboardColors.accentGreenLight
+                      ),
+                      child: Image.asset(
+                        icon,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  );
+                },
               ),
-              child: Icon(icon, size: 48, color: Colors.blue),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
               title,
               textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: DashboardColors.textPrimary,
               ),

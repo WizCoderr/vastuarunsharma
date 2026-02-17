@@ -19,7 +19,7 @@ class _TestimonialsSectionState extends State<TestimonialsSection> {
     Testimonial(
       authorName: 'Neha Nougai',
       profilePhotoUrl:
-          'https://ui-avatars.com/api/?name=Neha+Nougai&background=white&color=000000',
+          'https://ui-avatars.com/api/?name=Neha%20Nougai&background=D7A417&color=fff&size=128&bold=true',
       rating: 5,
       text:
           "Vastu Arun Sharma has helped us in transforming our home into a place of peace and prosperity. His ideas and advice have made a big difference in our lives.",
@@ -28,7 +28,7 @@ class _TestimonialsSectionState extends State<TestimonialsSection> {
     Testimonial(
       authorName: 'Mayank Kapila',
       profilePhotoUrl:
-          'https://ui-avatars.com/api/?name=Mayank+Kapila&background=white&color=000000',
+          'https://ui-avatars.com/api/?name=Mayank+Kapila&background=D7A417&color=fff&size=128&bold=true',
       rating: 5,
       text:
           "The Vastu consultation from Arun sir leads to increased productivity and a more positive work environment around us.",
@@ -37,7 +37,7 @@ class _TestimonialsSectionState extends State<TestimonialsSection> {
     Testimonial(
       authorName: 'Hanish Bansal',
       profilePhotoUrl:
-          'https://ui-avatars.com/api/?name=Hanish+Bansa&background=white&color=000000',
+          'https://ui-avatars.com/api/?name=Hanish+Bansa&background=D7A417&color=fff&size=128&bold=true',
       rating: 4,
       text:
           "I was unsure of Vastu at first, but after working with Arun Sharma Ji, I am convinced of its effectiveness as My firm has seen a significant improvement after implementing his recommendations.",
