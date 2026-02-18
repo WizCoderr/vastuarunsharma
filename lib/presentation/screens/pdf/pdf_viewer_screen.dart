@@ -20,35 +20,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   double _downloadProgress = 0.0;
 
   Future<void> _downloadPdf() async {
-    // Request storage permission
-    // For Android 13+ (SDK 33+), READ_EXTERNAL_STORAGE is deprecated for media, but for documents we might rely on SAF or just public directories.
-    // However, managing_external_storage is too broad.
-    // Let's try basic getExternalStorageDirectory (which is app-specific and doesn't need runtime permission usually)
-    // OR Request permission for public downloads.
-
-    // Simplest approach for now: App Document Directory or External App Storage (Android ~ /Android/data/com.app/files)
-    // If the user wants "Downloads" folder public visibility, it requires more complex permission handling on Android 10+.
-    // Let's stick to Application Documents for now to ensure it works reliable without complex permissions first,
-    // BUT user usually expects "Downloads".
-    // Let's try getting the "Downloads" directory.
-
-    if (Platform.isAndroid) {
-      /*
-       // Android 13+ doesn't explicitly need permission to write to public Download folder via MediaStore or SAF, 
-       // but direct styling via File API might be restricted. 
-       // We'll try the safe "External Storage" permission flow for older androids.
-       */
-      final status = await Permission.storage.request();
-      if (!status.isGranted &&
-          !await Permission.manageExternalStorage.isGranted) {
-        // Try to proceed anyway if it's strictly about app-specific storage or if status is just confusing on newer Android
-        // checking specific Android 13 permissions might be needed: Permission.photos, etc. but this is PDF.
-        // Let's just try to download to temporary folder first if permission fails, or just show error.
-
-        // On Android 13, storage permission is often always "denied" for generic storage.
-        // Let's skip permission check for now to rely on scoped storage or just try/catch the write.
-      }
-    }
+    // Simplest approach for now: App Document Directory or External App Storage
+    // On Android 13+, explicit storage permission is not needed for app-specific directories.
 
     setState(() {
       _isDownloading = true;
@@ -58,9 +31,11 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     try {
       Directory? dir;
       if (Platform.isAndroid) {
+        // Try getting the public Download directory first, but fallback gracefully if not accessible without SAF
         dir = Directory('/storage/emulated/0/Download');
         if (!await dir.exists()) {
-          dir = await getExternalStorageDirectory();
+           // Fallback to app-specific external storage which doesn't need runtime permission
+           dir = await getExternalStorageDirectory();
         }
       } else {
         dir = await getApplicationDocumentsDirectory();

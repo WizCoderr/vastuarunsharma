@@ -44,7 +44,7 @@ class InstructorCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: Image.asset(
-              'assets/images/DSC06354.JPG',
+              'assets/images/IMG_6463.JPG',
               width: double.infinity,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
