@@ -66,6 +66,7 @@ class _CompassScreenState extends State<CompassScreen>
       }
     });
   }
+
   Future<void> _initCamera() async {
     try {
       _cameras = await availableCameras();
@@ -96,6 +97,7 @@ class _CompassScreenState extends State<CompassScreen>
       }
     }
   }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final CameraController? cameraController = _cameraController;
@@ -108,6 +110,7 @@ class _CompassScreenState extends State<CompassScreen>
       _onNewCameraSelected(cameraController.description);
     }
   }
+
   void _onNewCameraSelected(CameraDescription cameraDescription) async {
     if (_cameraController != null) {
       await _cameraController!.dispose();
@@ -127,6 +130,7 @@ class _CompassScreenState extends State<CompassScreen>
       }
     }
   }
+
   void _initCompass() {
     _compassSubscription = FlutterCompass.events?.listen((event) {
       if (mounted) {
@@ -140,6 +144,7 @@ class _CompassScreenState extends State<CompassScreen>
       }
     });
   }
+
   Future<void> _initLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -189,8 +194,8 @@ class _CompassScreenState extends State<CompassScreen>
     setState(() {
       _showMap = !_showMap;
       if (_showMap) {
-        _showCamera = false; 
-        }
+        _showCamera = false;
+      }
     });
   }
 
@@ -198,7 +203,7 @@ class _CompassScreenState extends State<CompassScreen>
     setState(() {
       _showCamera = !_showCamera;
       if (_showCamera) {
-        _showMap = false; 
+        _showMap = false;
         if (_cameraError.isNotEmpty ||
             _cameraController == null ||
             !_cameraController!.value.isInitialized) {
@@ -207,6 +212,7 @@ class _CompassScreenState extends State<CompassScreen>
       }
     });
   }
+
   Future<void> _captureScreenshot() async {
     try {
       bool hasAccess = await Gal.hasAccess();
@@ -271,6 +277,21 @@ class _CompassScreenState extends State<CompassScreen>
     _mapController?.dispose();
     _cameraController?.dispose();
     super.dispose();
+  }
+
+  String _getDirectionLabel(double heading) {
+    final directions = [
+      'North',
+      'North-East',
+      'East',
+      'South-East',
+      'South',
+      'South-West',
+      'West',
+      'North-West',
+    ];
+    final index = ((heading + 22.5) % 360) ~/ 45;
+    return directions[index % 8];
   }
 
   @override
@@ -344,6 +365,7 @@ class _CompassScreenState extends State<CompassScreen>
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             CompassControlButton(
                               icon: _showMap
@@ -352,7 +374,66 @@ class _CompassScreenState extends State<CompassScreen>
                               label: _showMap ? "Hide Map" : "Google map",
                               onTap: _toggleMap,
                             ),
-                            const Spacer(),
+                            // Degree Display - Center Top (between buttons)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                                vertical: 6.0,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Degree Value
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        displayHeading.toStringAsFixed(0),
+                                        style: TextStyle(
+                                          fontSize: 36,
+                                          fontWeight: FontWeight.bold,
+                                          color: isBackgroundMode
+                                              ? Colors.white
+                                              : Colors.red,
+                                          shadows: [
+                                            Shadow(
+                                              blurRadius: 3.0,
+                                              color: isBackgroundMode
+                                                  ? Colors.black
+                                                  : Colors.red.withOpacity(0.4),
+                                              offset: const Offset(1, 1),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Text(
+                                        "°",
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: isBackgroundMode
+                                              ? Colors.white70
+                                              : Colors.red.shade700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  // Direction Label
+                                  Text(
+                                    _getDirectionLabel(displayHeading),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isBackgroundMode
+                                          ? Colors.white70
+                                          : Colors.red.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                             CompassControlButton(
                               icon: _showCamera
                                   ? Icons.camera_alt
@@ -485,7 +566,8 @@ class _CompassScreenState extends State<CompassScreen>
                                       children: [
                                         const TextSpan(text: "Strength: "),
                                         TextSpan(
-                                          text: "${_magneticField.toStringAsFixed(0)} μT",
+                                          text:
+                                              "${_magneticField.toStringAsFixed(0)} μT",
                                           style: TextStyle(
                                             color: Colors.red, // Red always
                                             fontWeight: FontWeight.bold,
@@ -508,57 +590,30 @@ class _CompassScreenState extends State<CompassScreen>
                           ],
                         ),
                       ),
+
                       
-                      // Degree Display
-                      Padding(
-                        padding: const EdgeInsets.only(top: 20.0),
-                        child: Column(
-                          children: [
-                            Text(
-                              "${displayHeading.toStringAsFixed(0)}° Degree",
+                      if (_statusMessage.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12.0,
+                              vertical: 6.0,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child: Text(
+                              _statusMessage,
                               style: const TextStyle(
-                                fontSize: 28, // Larger
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red, // Red as per screenshot
-                                shadows: [
-                                  Shadow(
-                                    blurRadius: 2.0,
-                                    color: Colors.black,
-                                    offset: Offset(1, 1),
-                                  ),
-                                ],
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                            // Dropdown arrow
-                            if (!isBackgroundMode)
-                              const Icon(
-                                Icons.arrow_drop_down,
-                                size: 30,
-                                color: Colors.blue,
-                              ),
-
-                            if (isBackgroundMode)
-                              const Icon(
-                                Icons.arrow_drop_down,
-                                size: 30,
-                                color: Colors.blue,
-                              ),
-
-                            if (_statusMessage.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Text(
-                                  _statusMessage,
-                                  style: const TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 12,
-                                    backgroundColor: Colors.white,
-                                  ),
-                                ),
-                              ),
-                          ],
+                          ),
                         ),
-                      ),
 
                       const Spacer(), // Pushes bottom content down
                       const SizedBox(height: 20),

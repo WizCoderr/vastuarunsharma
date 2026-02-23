@@ -17,7 +17,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../../core/constants/route_constants.dart';
 import '../../../widgets/compass/compass_control_button.dart';
 import '../../../widgets/compass/compass_bottom_action.dart';
-import 'compas_screen.dart'; 
+import 'compas_screen.dart';
 
 class Thirtytwozonecompass extends StatefulWidget {
   const Thirtytwozonecompass({super.key});
@@ -289,6 +289,53 @@ class _ThirtytwozonecompassState extends State<Thirtytwozonecompass>
     super.dispose();
   }
 
+  // Helper method to get direction label from heading
+  String _getDirectionLabel(double heading) {
+    // Normalize heading to 0-360
+    heading = heading % 360;
+    if (heading < 0) heading += 360;
+
+    // Define 32 compass directions
+    final directions = [
+      'North',
+      'North by East',
+      'North-Northeast',
+      'Northeast by North',
+      'Northeast',
+      'Northeast by East',
+      'East-Northeast',
+      'East by North',
+      'East',
+      'East by South',
+      'East-Southeast',
+      'Southeast by East',
+      'Southeast',
+      'Southeast by South',
+      'South-Southeast',
+      'South by East',
+      'South',
+      'South by West',
+      'South-Southwest',
+      'Southwest by South',
+      'Southwest',
+      'Southwest by West',
+      'West-Southwest',
+      'West by South',
+      'West',
+      'West by North',
+      'West-Northwest',
+      'Northwest by West',
+      'Northwest',
+      'Northwest by North',
+      'North-Northwest',
+      'North by West',
+    ];
+
+    // Each direction spans 11.25 degrees (360 / 32)
+    final index = ((heading + 5.625) / 11.25).floor() % 32;
+    return directions[index];
+  }
+
   @override
   Widget build(BuildContext context) {
     final double displayHeading = _heading ?? 0.0;
@@ -384,7 +431,79 @@ class _ThirtytwozonecompassState extends State<Thirtytwozonecompass>
                               label: _showMap ? "Hide Map" : "Google map",
                               onTap: _toggleMap,
                             ),
-                            const Spacer(),
+                            // Degree Display (Between Controls)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                                vertical: 8.0,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isBackgroundMode
+                                    ? Colors.black.withOpacity(0.7)
+                                    : Colors.white.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(12.0),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 8.0,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Degree Value with Symbol
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        displayHeading.toStringAsFixed(0),
+                                        style: TextStyle(
+                                          fontSize: 36,
+                                          fontWeight: FontWeight.bold,
+                                          color: isBackgroundMode
+                                              ? Colors.white
+                                              : Colors.red.shade700,
+                                          shadows: [
+                                            Shadow(
+                                              blurRadius: 4.0,
+                                              color: Colors.black.withOpacity(
+                                                0.3,
+                                              ),
+                                              offset: const Offset(2, 2),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Text(
+                                        "°",
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: isBackgroundMode
+                                              ? Colors.white
+                                              : Colors.red.shade700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  // Direction Label
+                                  Text(
+                                    _getDirectionLabel(displayHeading),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isBackgroundMode
+                                          ? Colors.white70
+                                          : Colors.red.shade500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                             CompassControlButton(
                               icon: _showCamera
                                   ? Icons.camera_alt
@@ -419,49 +538,29 @@ class _ThirtytwozonecompassState extends State<Thirtytwozonecompass>
                         ),
                       ),
 
-                      // Degree Display
-                      Padding(
-                        padding: const EdgeInsets.only(top: 20.0),
-                        child: Column(
-                          children: [
-                            Text(
-                              "${displayHeading.toStringAsFixed(0)}° Degree",
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Colors
-                                    .black, // Changed to black as per user design or keep relative to background
-                                shadows: [
-                                  Shadow(
-                                    blurRadius: 2.0,
-                                    color: Colors.white,
-                                    offset: Offset(1, 1),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Triangle Indicator
-                            Icon(
-                              Icons.arrow_drop_down,
-                              size: 40,
-                              color: Colors.blue,
-                            ),
-                            if (_statusMessage.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Text(
-                                  _statusMessage,
-                                  style: const TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 12,
-                                    backgroundColor: Colors.white,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
                       
+                      // Status Message
+                      if (_statusMessage.isNotEmpty)
+                        Container(
+                          margin: const EdgeInsets.only(top: 8.0),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12.0,
+                            vertical: 6.0,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                          child: Text(
+                            _statusMessage,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+
                       const Spacer(),
 
                       const SizedBox(height: 20),
@@ -496,8 +595,6 @@ class _ThirtytwozonecompassState extends State<Thirtytwozonecompass>
                 ],
               ),
             ),
-
-
           ],
         ),
       ),
