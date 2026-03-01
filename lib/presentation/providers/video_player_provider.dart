@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
+import '../../core/utils/youtube_url_utils.dart';
 import '../../domain/entities/course.dart';
 
 /// State class for video player
@@ -69,11 +70,11 @@ class VideoPlayerNotifier extends Notifier<VideoPlayerState?> {
 
   /// Initialize the player with a video URL
   void initialize(String videoUrl, Lecture lecture) {
-    // Extract ID
-    final videoId = YoutubePlayerController.convertUrlToId(videoUrl);
+    // Extract ID safely from any YouTube URL format
+    final videoId = YoutubeUrlUtils.extractVideoId(videoUrl);
     if (videoId == null) {
       state = VideoPlayerState(
-        errorMessage: 'Invalid YouTube URL',
+        errorMessage: 'Invalid YouTube URL: $videoUrl',
         currentLecture: lecture,
       );
       return;
@@ -82,16 +83,24 @@ class VideoPlayerNotifier extends Notifier<VideoPlayerState?> {
     // Dispose existing if any
     _controller?.close();
 
-    // Create new controller
-    _controller = YoutubePlayerController(
+    // Use the canonical fromVideoId factory (recommended by youtube_player_iframe)
+    // with autoPlay: true so the video starts immediately after the player is ready.
+    // CRITICAL: origin must be 'https://www.youtube-nocookie.com' to avoid
+    // Error 150/152 on unlisted/restricted videos.
+    _controller = YoutubePlayerController.fromVideoId(
+      videoId: videoId,
+      autoPlay: true,
       params: const YoutubePlayerParams(
         showControls: true,
         showFullscreenButton: true,
         strictRelatedVideos: true,
+        playsInline: true,
+        enableJavaScript: true,
+        enableCaption: true,
+        // CRITICAL: youtube-nocookie.com prevents embedding restriction errors
+        origin: 'https://www.youtube-nocookie.com',
       ),
     );
-
-    _controller?.loadVideoById(videoId: videoId);
 
     // Initial state
     state = VideoPlayerState(

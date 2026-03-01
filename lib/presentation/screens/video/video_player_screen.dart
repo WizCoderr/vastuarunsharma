@@ -311,9 +311,26 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                   ),
                 )
               : (controller != null)
-                  ? YoutubePlayer(
-                      controller: controller,
-                      aspectRatio: 16 / 9,
+                  ? Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        SizedBox.expand(
+                          child: YoutubePlayer(
+                            controller: controller,
+                            aspectRatio: 16 / 9,
+                          ),
+                        ),
+                        // Overlay to hide YouTube's copy link icon (bottom-left)
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
                     )
                   : const Center(
                       child: CircularProgressIndicator(color: AppColors.primary),

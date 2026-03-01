@@ -103,7 +103,8 @@ class LectureResponse {
       LectureResponse(
         id: json['id'] as String? ?? '',
         title: json['title'] as String? ?? '',
-        videoUrl: json['videoUrl'] as String? ?? '',
+        // Prefer watchId (full YouTube URL) over videoUrl when present
+        videoUrl: (json['watchId'] as String?) ?? (json['videoUrl'] as String?) ?? '',
         videoProvider: json['videoProvider'] as String? ?? 's3',
       );
 
