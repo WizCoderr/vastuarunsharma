@@ -9,6 +9,7 @@ class RouteConstants {
   static const String profile = '/profile';
   static const String stats = '/stats';
   static const String compass = '/compass';
+  static const String remidies = '/remidies';
   static const String payment = 'payment';
 
   // Routes with parameters

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:vastuarunsharma/presentation/screens/compass/screens/SixteenZoneCompass.dart';
 import 'package:vastuarunsharma/presentation/screens/compass/screens/ThirtytwoZoneCompass.dart';
 import '../../core/constants/route_constants.dart';
+import '../../presentation/screens/remidies/remidies_screen.dart';
 
 import '../../presentation/providers/auth_provider.dart';
 import '../../presentation/screens/landing/landing_screen.dart';
@@ -157,6 +158,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const Thirtytwozonecompass(),
               ),
             ],
+          ),
+          GoRoute(
+            path: RouteConstants.remidies,
+            builder: (context, state) => const RemidiesScreen(),
           ),
           GoRoute(
             path: RouteConstants.courses,
