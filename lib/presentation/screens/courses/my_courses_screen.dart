@@ -243,6 +243,26 @@ class _MyCoursesScreenState extends ConsumerState<MyCoursesScreen>
                                     style: TextStyle(fontSize: 13),
                                   ),
                                 ),
+                                if (course.paymentStatus == 'STAGED')
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: OutlinedButton(
+                                      onPressed: () => context.push(
+                                        RouteConstants.paymentProgressPath(course.id),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        minimumSize: const Size(double.infinity, 36),
+                                        side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Payment Progress',
+                                        style: TextStyle(fontSize: 13),
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),

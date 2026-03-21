@@ -116,6 +116,39 @@ class SectionModel extends Section {
   }
 }
 
+class PaymentPlanModel extends PaymentPlan {
+  const PaymentPlanModel({
+    required super.id,
+    required super.courseId,
+    required super.title,
+    required super.description,
+    required super.amount,
+    required super.dueDays,
+  });
+
+  factory PaymentPlanModel.fromJson(Map<String, dynamic> json) {
+    return PaymentPlanModel(
+      id: json['id'] as String? ?? '',
+      courseId: json['courseId'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      dueDays: json['dueDays'] as int? ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'courseId': courseId,
+      'title': title,
+      'description': description,
+      'amount': amount,
+      'dueDays': dueDays,
+    };
+  }
+}
+
 class CourseModel extends Course {
   const CourseModel({
     required super.id,
@@ -128,7 +161,13 @@ class CourseModel extends Course {
     required super.mediaType,
     required List<SectionModel> super.sections,
     List<LiveClassModel>? liveClasses,
-  }) : super(liveClasses: liveClasses ?? const []);
+    List<PaymentPlanModel>? paymentPlans,
+    super.endDate,
+    super.paymentStatus,
+  }) : super(
+          liveClasses: liveClasses ?? const [],
+          paymentPlans: paymentPlans ?? const [],
+        );
 
   factory CourseModel.fromJson(Map<String, dynamic> json) {
     return CourseModel(
@@ -150,6 +189,14 @@ class CourseModel extends Course {
               ?.map((e) => LiveClassModel.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      paymentPlans:
+          (json['paymentPlans'] as List<dynamic>?)
+              ?.map((e) => PaymentPlanModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      endDate:
+          json['endDate'] != null ? DateTime.tryParse(json['endDate']) : null,
+      paymentStatus: json['paymentStatus'] as String?,
     );
   }
 
@@ -167,6 +214,11 @@ class CourseModel extends Course {
       'liveClasses': liveClasses
           .map((e) => (e as LiveClassModel).toJson())
           .toList(),
+      'paymentPlans': paymentPlans
+          .map((e) => (e as PaymentPlanModel).toJson())
+          .toList(),
+      'endDate': endDate?.toIso8601String(),
+      'paymentStatus': paymentStatus,
     };
   }
 }

@@ -701,6 +701,86 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   }
 
   Widget _buildError(Object error) {
+    final errorStr = error.toString().toLowerCase();
+    final isOverdue = errorStr.contains("payment overdue");
+    final isExpired = errorStr.contains("course has expired");
+
+    if (isOverdue) {
+      return Container(
+        color: Colors.black,
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock_clock, size: 64, color: Colors.amber),
+              const SizedBox(height: 24),
+              const Text(
+                "Access Restricted",
+                style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                "Please complete your pending fees to continue accessing course content.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () => context.push(RouteConstants.paymentProgressPath(widget.courseId)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber.shade700,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                ),
+                child: const Text("Go to Payments"),
+              ),
+              TextButton(
+                onPressed: () => context.go(RouteConstants.myCourses),
+                child: const Text("Back to My Courses", style: TextStyle(color: Colors.white60)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (isExpired) {
+      return Container(
+        color: Colors.black,
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.history_toggle_off, size: 64, color: Colors.redAccent),
+              const SizedBox(height: 24),
+              const Text(
+                "Course Finished",
+                style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                "This course has reached its end date and is no longer available for playback.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () => context.go(RouteConstants.courses),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                ),
+                child: const Text("Browse Other Courses"),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

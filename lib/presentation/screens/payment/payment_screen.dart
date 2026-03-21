@@ -9,7 +9,8 @@ import '../../providers/refresh_provider.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   final String courseId;
-  const CheckoutScreen({super.key, required this.courseId});
+  final String? paymentId;
+  const CheckoutScreen({super.key, required this.courseId, this.paymentId});
 
   @override
   ConsumerState<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -67,6 +68,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             razorpayPaymentId: paymentId,
             razorpaySignature: signature,
             courseId: widget.courseId,
+            paymentId: widget.paymentId,
           );
 
       if (success && mounted) {
@@ -108,14 +110,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Future<void> _startPayment(double amount) async {
     try {
       // Check for free course
-      if (amount <= 0) {
+      if (amount <= 0 && widget.paymentId == null) {
         await _handleFreeEnrollment();
         return;
       }
 
       final orderData = await ref
           .read(paymentControllerProvider.notifier)
-          .createOrder(widget.courseId);
+          .createOrder(widget.courseId, paymentId: widget.paymentId);
 
       if (orderData != null) {
         _currentOrderId = orderData['id'];
@@ -224,6 +226,17 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                               fontSize: 18,
                             ),
                           ),
+                          if (widget.paymentId != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                "Installment Payment",
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                           const SizedBox(height: 8),
                           Text(
                             "Lifetime Access",

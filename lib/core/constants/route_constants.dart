@@ -15,12 +15,14 @@ class RouteConstants {
   static const String courseDetails = 'course-details';
   static const String enrollment = 'enrollment';
   static const String videoPlayer = 'video-player';
+  static const String paymentProgress = 'payment-progress';
 
   // Full paths for internal navigation
   static String courseDetailsPath(String id) => '/course/$id';
   static String enrollmentPath(String id) => '/enrollment/$id';
   static String videoPlayerPath(String id) => '/video/$id';
   static String paymentPath(String id) => '/payment/$id';
+  static String paymentProgressPath(String id) => '/payment-progress/$id';
   static const String compassResult = '/compass-result';
   static const String compassNormal = '/compass/normal';
   static const String compassSixteen = '/compass/16-zone';

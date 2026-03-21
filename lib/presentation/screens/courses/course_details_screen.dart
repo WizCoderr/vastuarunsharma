@@ -309,96 +309,118 @@ class CourseDetailsScreen extends ConsumerWidget {
         ),
       ),
       bottomNavigationBar: courseAsync.when(
-        data: (course) => GlassContainer(
-          padding: const EdgeInsets.all(16),
-          borderRadius: 0, // Flat bottom sheet
-          opacity: 0.9,
-          child: Row(
-            children: [
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "COURSE FEE",
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
-                  ),
-                  Text(
-                    course.price == 0
-                        ? "Free"
-                        : "₹${course.price.toStringAsFixed(0)}",
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
+        data: (course) {
+          final hasStagedPlans = course.paymentPlans.isNotEmpty;
+          final displayPrice = hasStagedPlans ? course.paymentPlans.first.amount : course.price;
+
+          return GlassContainer(
+            padding: const EdgeInsets.all(16),
+            borderRadius: 0, // Flat bottom sheet
+            opacity: 0.9,
+            child: Row(
+              children: [
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasStagedPlans ? "STAGE 1 FEE" : "COURSE FEE",
+                      style: const TextStyle(fontSize: 12, color: Colors.black54),
                     ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              GlassButton(
-                width: 170,
-                height: 50,
-                onPressed: () async {
-                  final authState = ref.read(authStateProvider);
-                  if (authState.value == null) {
-                    _showLoginDialog(context);
-                    return;
-                  }
+                    Text(
+                      displayPrice == 0
+                          ? "Free"
+                          : "₹${displayPrice.toStringAsFixed(0)}",
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                GlassButton(
+                  width: 170,
+                  height: 50,
+                  onPressed: () async {
+                    final authState = ref.read(authStateProvider);
+                    if (authState.value == null) {
+                      _showLoginDialog(context);
+                      return;
+                    }
 
-                  if (course.enrolled == true) {
-                    context.go(RouteConstants.videoPlayerPath(courseId));
-                  } else if (course.price == 0) {
-                    // Free Course Bypass
-                    try {
-                      // Show loading indicator
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Enrolling in free course..."),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-
-                      final success = await ref
-                          .read(paymentControllerProvider.notifier)
-                          .freeEnroll(courseId);
-
-                      if (success && context.mounted) {
-                        ref.refreshAfterEnrollment();
-                        ref.refreshCourseDetails(courseId);
-
+                    if (course.enrolled == true) {
+                      context.go(RouteConstants.videoPlayerPath(courseId));
+                    } else if (course.price == 0) {
+                      // Free Course Bypass
+                      try {
+                        // Show loading indicator
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text("Enrollment Successful!"),
+                            content: Text("Enrolling in free course..."),
+                            duration: Duration(seconds: 1),
                           ),
                         );
-                        context.go(RouteConstants.enrollmentPath(courseId));
+
+                        final success = await ref
+                            .read(paymentControllerProvider.notifier)
+                            .freeEnroll(courseId);
+
+                        if (success && context.mounted) {
+                          ref.refreshAfterEnrollment();
+                          ref.refreshCourseDetails(courseId);
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Enrollment Successful!"),
+                            ),
+                          );
+                          context.go(RouteConstants.enrollmentPath(courseId));
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("Enrollment Failed: $e"),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
                       }
-                    } catch (e) {
-                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text("Enrollment Failed: $e"),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
+                    } else if (hasStagedPlans) {
+                      // Staged enrollment logic
+                      try {
+                        final orderData = await ref
+                            .read(paymentControllerProvider.notifier)
+                            .enrollInCourse(courseId);
+                        
+                        if (orderData != null && context.mounted) {
+                           context.push(RouteConstants.paymentPath(courseId));
+                        }
+                      } catch (e) {
+                         if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Failed to initiate installment: $e")),
+                          );
+                        }
                       }
+                    } else {
+                      context.go(RouteConstants.paymentPath(courseId));
                     }
-                  } else {
-                    context.go(RouteConstants.paymentPath(courseId));
-                  }
-                },
-                color: Theme.of(context).colorScheme.primary,
-                child: Text(
-                  course.enrolled == true ? 'Start Learning' : 'Join Now',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                  },
+                  color: Theme.of(context).colorScheme.primary,
+                  child: Text(
+                    course.enrolled == true ? 'Start Learning' : 'Join Now',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
+              ],
+            ),
+          );
+        },
         loading: () => const SizedBox.shrink(),
         error: (_, _) => const SizedBox.shrink(),
       ),

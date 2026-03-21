@@ -5,6 +5,9 @@ import '../../data/datasources/remote/payment_remote_datasource.dart';
 import '../../data/repositories/payment_repository.dart';
 import 'course_provider.dart';
 
+import '../../data/models/response/student_payment_model.dart';
+import '../../domain/entities/course.dart';
+
 // Remote DataSource Provider
 final paymentRemoteDataSourceProvider = Provider<PaymentRemoteDataSource>((
   ref,
@@ -25,28 +28,57 @@ final paymentRepositoryProvider = Provider<PaymentRepository>((ref) {
   return PaymentRepository(remoteDataSource);
 });
 
+// Providers for fetching data
+final coursePaymentPlanProvider =
+    FutureProvider.family<List<PaymentPlan>, String>((ref, courseId) async {
+      final repository = ref.watch(paymentRepositoryProvider);
+      final result = await repository.getPaymentPlan(courseId);
+      return result.fold(
+        (failure) => throw Exception(failure.message),
+        (plan) => plan,
+      );
+    });
+
+final studentCoursePaymentsProvider =
+    FutureProvider.family<List<StudentPaymentModel>, String>((
+      ref,
+      courseId,
+    ) async {
+      final repository = ref.watch(paymentRepositoryProvider);
+      final result = await repository.getStudentCoursePayments(courseId);
+      return result.fold(
+        (failure) => throw Exception(failure.message),
+        (payments) => payments,
+      );
+    });
+
 // Payment Controller / Notifier
 class PaymentController extends StateNotifier<AsyncValue<void>> {
   final PaymentRepository _repository;
 
   PaymentController(this._repository) : super(const AsyncValue.data(null));
 
-  Future<Map<String, dynamic>?> createOrder(String courseId) async {
-    if (courseId.trim().isEmpty) {
-      debugPrint('PaymentController: createOrder called with empty courseId');
-      throw Exception('courseId is required');
+  Future<Map<String, dynamic>?> createOrder(
+    String courseId, {
+    String? paymentId,
+  }) async {
+    if (courseId.trim().isEmpty && paymentId == null) {
+      debugPrint('PaymentController: createOrder called with empty identifiers');
+      throw Exception('courseId or paymentId is required');
     }
 
     state = const AsyncValue.loading();
-    debugPrint("PaymentController: creating order for $courseId");
+    debugPrint("PaymentController: creating order for $courseId / $paymentId");
 
-    final result = await _repository.createOrder(courseId);
+    final result =
+        paymentId != null
+            ? await _repository.payInstallment(paymentId)
+            : await _repository.createOrder(courseId);
 
     return result.fold(
       (failure) {
         debugPrint("PaymentController: createOrder failed: ${failure.message}");
         state = AsyncValue.error(failure.message, StackTrace.current);
-        // Surface the error to the caller so the UI can show exact server response
         throw Exception(failure.message);
       },
       (order) {
@@ -57,7 +89,29 @@ class PaymentController extends StateNotifier<AsyncValue<void>> {
           'amount': order.amount,
           'currency': order.currency,
           'key': order.key,
-          'description': 'Course Purchase',
+          'description': paymentId != null ? 'Installment Payment' : 'Course Purchase',
+        };
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>?> enrollInCourse(String courseId) async {
+    state = const AsyncValue.loading();
+    final result = await _repository.enrollInCourse(courseId);
+
+    return result.fold(
+      (failure) {
+        state = AsyncValue.error(failure.message, StackTrace.current);
+        throw Exception(failure.message);
+      },
+      (order) {
+        state = const AsyncValue.data(null);
+        return {
+          'id': order.id,
+          'amount': order.amount,
+          'currency': order.currency,
+          'key': order.key,
+          'description': 'Course Enrollment (Staged)',
         };
       },
     );
@@ -68,20 +122,21 @@ class PaymentController extends StateNotifier<AsyncValue<void>> {
     required String razorpayPaymentId,
     required String razorpaySignature,
     required String courseId,
+    String? paymentId,
   }) async {
     if (razorpayOrderId.trim().isEmpty ||
         razorpayPaymentId.trim().isEmpty ||
         razorpaySignature.trim().isEmpty ||
-        courseId.trim().isEmpty) {
+        (courseId.trim().isEmpty && paymentId == null)) {
       debugPrint(
-        'PaymentController: verifyPayment called with incomplete details -> order:$razorpayOrderId payment:$razorpayPaymentId signature:$razorpaySignature course:$courseId',
+        'PaymentController: verifyPayment called with incomplete details -> order:$razorpayOrderId payment:$razorpayPaymentId signature:$razorpaySignature course:$courseId paymentId:$paymentId',
       );
       throw Exception('Incomplete payment details');
     }
 
     state = const AsyncValue.loading();
     debugPrint(
-      "PaymentController: verifying payment $razorpayPaymentId for course $courseId",
+      "PaymentController: verifying payment $razorpayPaymentId for course $courseId / $paymentId",
     );
 
     final result = await _repository.verifyPayment(
@@ -89,6 +144,7 @@ class PaymentController extends StateNotifier<AsyncValue<void>> {
       razorpayPaymentId: razorpayPaymentId,
       razorpaySignature: razorpaySignature,
       courseId: courseId,
+      paymentId: paymentId,
     );
 
     return result.fold(
@@ -97,7 +153,6 @@ class PaymentController extends StateNotifier<AsyncValue<void>> {
           "PaymentController: verifyPayment failed: ${failure.message}",
         );
         state = AsyncValue.error(failure.message, StackTrace.current);
-        // Surface the error to the caller so the UI can show exact server response
         throw Exception(failure.message);
       },
       (success) {

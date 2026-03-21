@@ -18,6 +18,7 @@ import '../../presentation/screens/video/video_player_screen.dart';
 import '../../presentation/screens/profile/profile_screen.dart';
 import '../../presentation/screens/stats/stats_screen.dart';
 import '../../presentation/screens/payment/payment_screen.dart';
+import '../../presentation/screens/payment/payment_progress_screen.dart';
 import '../../presentation/screens/pdf/pdf_viewer_screen.dart';
 import '../../presentation/screens/compass/screens/compas_screen.dart';
 import '../../presentation/screens/compass/compass_result_screen.dart';
@@ -119,7 +120,23 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/payment/:courseId',
         builder: (context, state) {
           final courseId = state.pathParameters['courseId'] ?? '';
-          return CheckoutScreen(courseId: courseId);
+          final extra = state.extra as Map<String, dynamic>?;
+          final paymentId = extra?['paymentId'] as String?;
+          return CheckoutScreen(courseId: courseId, paymentId: paymentId);
+        },
+        redirect: (context, state) {
+          if (!isLoggedIn()) {
+            return '${RouteConstants.login}?returnUrl=${state.matchedLocation}';
+          }
+          return null;
+        },
+      ),
+
+      GoRoute(
+        path: '/payment-progress/:courseId',
+        builder: (context, state) {
+          final courseId = state.pathParameters['courseId'] ?? '';
+          return PaymentProgressScreen(courseId: courseId);
         },
         redirect: (context, state) {
           if (!isLoggedIn()) {

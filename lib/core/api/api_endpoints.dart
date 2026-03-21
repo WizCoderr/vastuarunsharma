@@ -37,4 +37,13 @@ class ApiEndpoints {
   static const String createrazorpayorder = '/api/payments/razorpay/order';
   static const String verifyPayment = '/api/payments/razorpay/verify';
   static const String freeEnroll = '/api/payments/free-enroll';
+
+  static String coursePaymentPlan(String courseId) =>
+      '/api/payments/courses/$courseId/payment-plan';
+  static String enrollInCourse(String courseId) =>
+      '/api/payments/courses/$courseId/enroll';
+  static String studentCoursePayments(String courseId) =>
+      '/api/payments/student/course-payments/$courseId';
+  static String payInstallment(String paymentId) =>
+      '/api/payments/student/course-payments/$paymentId/pay';
 }
