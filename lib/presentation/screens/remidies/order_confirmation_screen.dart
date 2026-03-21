@@ -5,10 +5,10 @@ class OrderConfirmationScreen extends StatelessWidget {
   final String estimatedDelivery;
 
   const OrderConfirmationScreen({
-    Key? key,
+    super.key,
     required this.orderId,
     required this.estimatedDelivery,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

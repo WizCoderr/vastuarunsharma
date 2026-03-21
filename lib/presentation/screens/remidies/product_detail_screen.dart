@@ -4,8 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
 
-  const ProductDetailScreen({Key? key, required this.productId})
-    : super(key: key);
+  const ProductDetailScreen({super.key, required this.productId});
 
   @override
   ConsumerState<ProductDetailScreen> createState() =>

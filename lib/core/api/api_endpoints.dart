@@ -34,16 +34,25 @@ class ApiEndpoints {
       '/api/student/lectures/$lectureId/stream-url';
 
   // Payments
-  static const String createrazorpayorder = '/api/payments/razorpay/order';
-  static const String verifyPayment = '/api/payments/razorpay/verify';
+  static String coursePaymentPlan(String courseId) =>
+      '/api/payments/course/$courseId/plan';
+  static const String courseOrder = '/api/payments/course/order';
+  static const String courseVerify = '/api/payments/course/verify';
+  static String studentCoursePayments(String courseId) =>
+      '/api/payments/course/$courseId/my-payments';
+  static String payInstallment(String paymentId) =>
+      '/api/payments/course/installment/$paymentId/pay';
+  static String enrollInCourse(String courseId) =>
+      '/api/payments/course/$courseId/enroll';
+  static const String remediesOrder = '/api/payments/remidies/order';
+  static const String remediesVerify = '/api/payments/remidies/verify';
   static const String freeEnroll = '/api/payments/free-enroll';
 
-  static String coursePaymentPlan(String courseId) =>
-      '/api/payments/courses/$courseId/payment-plan';
-  static String enrollInCourse(String courseId) =>
-      '/api/payments/courses/$courseId/enroll';
-  static String studentCoursePayments(String courseId) =>
-      '/api/payments/student/course-payments/$courseId';
-  static String payInstallment(String paymentId) =>
-      '/api/payments/student/course-payments/$paymentId/pay';
+  // Remidies (Vastu Store)
+  static const String remidiesCategories = '/api/student/remidies/categories';
+  static const String remidiesProducts = '/api/student/remidies/products';
+  static const String remidiesCart = '/api/student/remidies/cart';
+  static const String remidiesOrders = '/api/student/remidies/orders';
+  static String remidiesCartItem(String productId) =>
+      '/api/student/remidies/cart/$productId';
 }

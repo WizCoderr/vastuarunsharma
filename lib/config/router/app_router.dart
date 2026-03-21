@@ -20,6 +20,8 @@ import '../../presentation/screens/profile/profile_screen.dart';
 import '../../presentation/screens/stats/stats_screen.dart';
 import '../../presentation/screens/payment/payment_screen.dart';
 import '../../presentation/screens/payment/payment_progress_screen.dart';
+import '../../presentation/screens/payment/remedies_payment_screen.dart';
+import '../../presentation/screens/payment/my_installments_screen.dart';
 import '../../presentation/screens/pdf/pdf_viewer_screen.dart';
 import '../../presentation/screens/compass/screens/compas_screen.dart';
 import '../../presentation/screens/compass/compass_result_screen.dart';
@@ -118,12 +120,38 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const StatsScreen(),
       ),
       GoRoute(
-        path: '/payment/:courseId',
+        path: RouteConstants.checkoutPath,
         builder: (context, state) {
-          final courseId = state.pathParameters['courseId'] ?? '';
-          final extra = state.extra as Map<String, dynamic>?;
-          final paymentId = extra?['paymentId'] as String?;
+          final extra = state.extra as Map<String, dynamic>;
+          final courseId = extra['courseId'] as String;
+          final paymentId = extra['paymentId'] as String?;
           return CheckoutScreen(courseId: courseId, paymentId: paymentId);
+        },
+        redirect: (context, state) {
+          if (!isLoggedIn()) {
+            return '${RouteConstants.login}?returnUrl=${state.matchedLocation}';
+          }
+          return null;
+        },
+      ),
+      GoRoute(
+        path: RouteConstants.remediesPaymentPath,
+        builder: (context, state) {
+          final orderId = state.extra as String;
+          return RemediesPaymentScreen(orderId: orderId);
+        },
+        redirect: (context, state) {
+          if (!isLoggedIn()) {
+            return '${RouteConstants.login}?returnUrl=${state.matchedLocation}';
+          }
+          return null;
+        },
+      ),
+      GoRoute(
+        path: RouteConstants.myInstallmentsPath,
+        builder: (context, state) {
+          final courseId = state.extra as String;
+          return MyInstallmentsScreen(courseId: courseId);
         },
         redirect: (context, state) {
           if (!isLoggedIn()) {

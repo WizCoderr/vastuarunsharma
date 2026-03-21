@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/remidies_providers.dart';
 
 class RemidiesCategoryFilters extends ConsumerWidget {
-  const RemidiesCategoryFilters({Key? key}) : super(key: key);
+  const RemidiesCategoryFilters({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

@@ -11,6 +11,10 @@ class RouteConstants {
   static const String compass = '/compass';
   static const String remidies = '/remidies';
   static const String payment = 'payment';
+  static const String checkoutPath = '/checkout';
+  static const String remediesPaymentPath = '/remedies-payment';
+  static const String myInstallmentsPath = '/my-installments';
+  static const String ordersPath = '/remidies/orders';
 
   // Routes with parameters
   static const String courseDetails = 'course-details';

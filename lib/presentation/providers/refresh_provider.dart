@@ -84,4 +84,11 @@ extension RefreshExtensions on WidgetRef {
       ProviderKeys.courseDetailsKey(courseId),
     );
   }
+
+  /// Call after successful remedies order payment
+  void refreshOrders() {
+    // Invalidate all course providers as a catch-all refresh
+    invalidate(allCoursesProvider);
+    read(freshnessManagerProvider.notifier).invalidate(ProviderKeys.allCourses);
+  }
 }

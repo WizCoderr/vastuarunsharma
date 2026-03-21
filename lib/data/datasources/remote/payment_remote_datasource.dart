@@ -23,7 +23,7 @@ class PaymentRemoteDataSource {
       debugPrint('CreateOrder payload: $payload');
 
       final resp = await client.post(
-        ApiEndpoints.createrazorpayorder,
+        ApiEndpoints.courseOrder,
         data: payload,
       );
 
@@ -41,6 +41,40 @@ class PaymentRemoteDataSource {
       throw Exception(msg);
     } catch (e) {
       debugPrint('CreateOrder unexpected error: $e');
+      rethrow;
+    }
+  }
+
+  Future<OrderResponse> createRemediesOrder(String orderId) async {
+    try {
+      if (orderId.trim().isEmpty) {
+        debugPrint('createRemediesOrder: empty orderId provided');
+        throw Exception('orderId is required');
+      }
+
+      final payload = {'orderId': orderId};
+      debugPrint('createRemediesOrder payload: $payload');
+
+      final resp = await client.post(
+        ApiEndpoints.remediesOrder,
+        data: payload,
+      );
+
+      debugPrint('createRemediesOrder response status: ${resp.statusCode}');
+      debugPrint('createRemediesOrder raw body: ${resp.data}');
+
+      final body = resp.data;
+      return _parseOrderResponse(body, resp);
+    } on DioException catch (e) {
+      final uri = e.requestOptions.uri.toString();
+      final status = e.response?.statusCode;
+      final body = e.response?.data;
+      final msg =
+          'createRemediesOrder failed: $uri -> $status ${body ?? e.message}';
+      debugPrint(msg);
+      throw Exception(msg);
+    } catch (e) {
+      debugPrint('createRemediesOrder unexpected error: $e');
       rethrow;
     }
   }
@@ -155,8 +189,8 @@ class PaymentRemoteDataSource {
   Future<bool> verifyPayment(
     String razorpayOrderId,
     String razorpayPaymentId,
-    String razorpaySignature,
-    String courseId, {
+    String razorpaySignature, {
+    String? courseId,
     String? paymentId,
   }) async {
     try {
@@ -164,7 +198,7 @@ class PaymentRemoteDataSource {
       if (razorpayOrderId.trim().isEmpty ||
           razorpayPaymentId.trim().isEmpty ||
           razorpaySignature.trim().isEmpty ||
-          (courseId.trim().isEmpty && paymentId == null)) {
+          (courseId == null && paymentId == null)) {
         debugPrint(
           'VerifyPayment: missing required fields -> order:$razorpayOrderId payment:$razorpayPaymentId signature:$razorpaySignature course:$courseId paymentId:$paymentId',
         );
@@ -175,13 +209,14 @@ class PaymentRemoteDataSource {
         'razorpay_order_id': razorpayOrderId,
         'razorpay_payment_id': razorpayPaymentId,
         'razorpay_signature': razorpaySignature,
-        if (courseId.isNotEmpty) 'courseId': courseId,
-        'paymentId': paymentId,
+        'courseId': ?courseId,
+        'paymentId': ?paymentId,
       };
 
       debugPrint('VerifyPayment payload: $payload');
 
-      final resp = await client.post(ApiEndpoints.verifyPayment, data: payload);
+      final resp =
+          await client.post(ApiEndpoints.courseVerify, data: payload);
 
       debugPrint('VerifyPayment response status: ${resp.statusCode}');
       debugPrint('VerifyPayment response body: ${resp.data}');
@@ -206,6 +241,66 @@ class PaymentRemoteDataSource {
       throw Exception(msg);
     } catch (e) {
       debugPrint('VerifyPayment unexpected error: $e');
+      rethrow;
+    }
+  }
+
+  Future<bool> verifyRemediesPayment(
+    String razorpayOrderId,
+    String razorpayPaymentId,
+    String razorpaySignature,
+    String orderId,
+  ) async {
+    try {
+      // Validate exact required params
+      if (razorpayOrderId.trim().isEmpty ||
+          razorpayPaymentId.trim().isEmpty ||
+          razorpaySignature.trim().isEmpty ||
+          orderId.trim().isEmpty) {
+        debugPrint(
+          'verifyRemediesPayment: missing required fields -> order:$razorpayOrderId payment:$razorpayPaymentId signature:$razorpaySignature orderId:$orderId',
+        );
+        throw Exception('Incomplete payment details');
+      }
+
+      final payload = {
+        'razorpay_order_id': razorpayOrderId,
+        'razorpay_payment_id': razorpayPaymentId,
+        'razorpay_signature': razorpaySignature,
+        'orderId': orderId,
+      };
+
+      debugPrint('verifyRemediesPayment payload: $payload');
+
+      final resp =
+          await client.post(ApiEndpoints.remediesVerify, data: payload);
+
+      debugPrint(
+          'verifyRemediesPayment response status: ${resp.statusCode}');
+      debugPrint('verifyRemediesPayment response body: ${resp.data}');
+
+      final api = ApiResponse<dynamic>.fromJson(
+        resp.data as Map<String, dynamic>,
+        (j) => j,
+      );
+
+      if (api.success) {
+        return true;
+      }
+
+      final errMsg =
+          api.message ?? 'Payment verification failed: ${resp.data}';
+      throw Exception(errMsg);
+    } on DioException catch (e) {
+      final uri = e.requestOptions.uri.toString();
+      final status = e.response?.statusCode;
+      final body = e.response?.data;
+      final msg =
+          'verifyRemediesPayment failed: $uri -> $status ${body ?? e.message}';
+      debugPrint(msg);
+      throw Exception(msg);
+    } catch (e) {
+      debugPrint('verifyRemediesPayment unexpected error: $e');
       rethrow;
     }
   }

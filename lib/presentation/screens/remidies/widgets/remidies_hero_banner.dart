@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class RemidiesHeroBanner extends StatelessWidget {
-  const RemidiesHeroBanner({Key? key}) : super(key: key);
+  const RemidiesHeroBanner({super.key});
 
   @override
   Widget build(BuildContext context) {

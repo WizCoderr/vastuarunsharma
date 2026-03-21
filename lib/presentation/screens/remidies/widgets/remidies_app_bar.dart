@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/cart_providers.dart';
 
 class RemidiesAppBar extends ConsumerWidget implements PreferredSizeWidget {
-  const RemidiesAppBar({Key? key}) : super(key: key);
+  const RemidiesAppBar({super.key});
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);

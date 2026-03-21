@@ -4,7 +4,7 @@ import 'package:vastuarunsharma/data/models/remidies/order.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/order_providers.dart';
 
 class MyOrdersScreen extends ConsumerWidget {
-  const MyOrdersScreen({Key? key}) : super(key: key);
+  const MyOrdersScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

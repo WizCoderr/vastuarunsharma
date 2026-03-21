@@ -5,7 +5,7 @@ import 'package:vastuarunsharma/data/models/remidies/cart_item.dart';
 import 'package:vastuarunsharma/presentation/screens/remidies/checkout_screen.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
-  const CartScreen({Key? key}) : super(key: key);
+  const CartScreen({super.key});
 
   @override
   ConsumerState<CartScreen> createState() => _CartScreenState();

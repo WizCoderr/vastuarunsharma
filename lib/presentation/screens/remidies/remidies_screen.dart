@@ -7,10 +7,23 @@ import 'package:vastuarunsharma/presentation/screens/remidies/widgets/remidies_p
 import 'package:vastuarunsharma/presentation/screens/remidies/widgets/remidies_search_bar.dart';
 
 class RemidiesScreen extends ConsumerWidget {
-  const RemidiesScreen({Key? key}) : super(key: key);
+  const RemidiesScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      body: Center(
+        child: Text("Remidies Commming soon....."),
+      ),
+    );
+  }
+}
+
+class Main extends StatelessWidget {
+  const Main({super.key});
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: const RemidiesAppBar(),
       body: SingleChildScrollView(

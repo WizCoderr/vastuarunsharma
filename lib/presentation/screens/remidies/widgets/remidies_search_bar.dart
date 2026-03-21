@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/remidies_providers.dart';
 
 class RemidiesSearchBar extends ConsumerWidget {
-  const RemidiesSearchBar({Key? key}) : super(key: key);
+  const RemidiesSearchBar({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

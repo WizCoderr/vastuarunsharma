@@ -52,11 +52,99 @@ final studentCoursePaymentsProvider =
       );
     });
 
+final myPaymentsProvider =
+    FutureProvider.family<List<StudentPaymentModel>, String>((ref, courseId) async {
+  final repository = ref.watch(paymentRepositoryProvider);
+  final result = await repository.getStudentCoursePayments(courseId);
+  return result.fold(
+    (failure) => throw Exception(failure.message),
+    (payments) => payments,
+  );
+});
+
 // Payment Controller / Notifier
 class PaymentController extends StateNotifier<AsyncValue<void>> {
   final PaymentRepository _repository;
 
   PaymentController(this._repository) : super(const AsyncValue.data(null));
+
+  Future<Map<String, dynamic>?> createRemediesOrder(String orderId) async {
+    if (orderId.trim().isEmpty) {
+      debugPrint(
+          'PaymentController: createRemediesOrder called with empty orderId');
+      throw Exception('orderId is required');
+    }
+
+    state = const AsyncValue.loading();
+    debugPrint("PaymentController: creating order for remedy $orderId");
+
+    final result = await _repository.createRemediesOrder(orderId);
+
+    return result.fold(
+      (failure) {
+        debugPrint(
+            "PaymentController: createRemediesOrder failed: ${failure.message}");
+        state = AsyncValue.error(failure.message, StackTrace.current);
+        throw Exception(failure.message);
+      },
+      (order) {
+        debugPrint(
+            "PaymentController: createRemediesOrder success: ${order.id}");
+        state = const AsyncValue.data(null);
+        return {
+          'id': order.id,
+          'amount': order.amount,
+          'currency': order.currency,
+          'key': order.key,
+          'description': 'Remedy Purchase',
+        };
+      },
+    );
+  }
+
+  Future<bool> verifyRemediesPayment({
+    required String razorpayOrderId,
+    required String razorpayPaymentId,
+    required String razorpaySignature,
+    required String orderId,
+  }) async {
+    if (razorpayOrderId.trim().isEmpty ||
+        razorpayPaymentId.trim().isEmpty ||
+        razorpaySignature.trim().isEmpty ||
+        orderId.trim().isEmpty) {
+      debugPrint(
+        'PaymentController: verifyRemediesPayment called with incomplete details -> order:$razorpayOrderId payment:$razorpayPaymentId signature:$razorpaySignature orderId:$orderId',
+      );
+      throw Exception('Incomplete payment details');
+    }
+
+    state = const AsyncValue.loading();
+    debugPrint(
+      "PaymentController: verifying payment $razorpayPaymentId for remedy order $orderId",
+    );
+
+    final result = await _repository.verifyRemediesPayment(
+      razorpayOrderId: razorpayOrderId,
+      razorpayPaymentId: razorpayPaymentId,
+      razorpaySignature: razorpaySignature,
+      orderId: orderId,
+    );
+
+    return result.fold(
+      (failure) {
+        debugPrint(
+          "PaymentController: verifyRemediesPayment failed: ${failure.message}",
+        );
+        state = AsyncValue.error(failure.message, StackTrace.current);
+        throw Exception(failure.message);
+      },
+      (success) {
+        debugPrint("PaymentController: verifyRemediesPayment success");
+        state = const AsyncValue.data(null);
+        return success;
+      },
+    );
+  }
 
   Future<Map<String, dynamic>?> createOrder(
     String courseId, {

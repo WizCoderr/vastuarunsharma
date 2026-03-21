@@ -73,8 +73,38 @@ class PaymentRepository {
         razorpayOrderId,
         razorpayPaymentId,
         razorpaySignature,
-        courseId,
+        courseId: courseId,
         paymentId: paymentId,
+      );
+      return Right(success);
+    } catch (e) {
+      return Left(NetworkFailure(e.toString()));
+    }
+  }
+
+  Future<Either<Failure, OrderResponse>> createRemediesOrder(
+    String orderId,
+  ) async {
+    try {
+      final order = await remoteDataSource.createRemediesOrder(orderId);
+      return Right(order);
+    } catch (e) {
+      return Left(NetworkFailure(e.toString()));
+    }
+  }
+
+  Future<Either<Failure, bool>> verifyRemediesPayment({
+    required String razorpayOrderId,
+    required String razorpayPaymentId,
+    required String razorpaySignature,
+    required String orderId,
+  }) async {
+    try {
+      final success = await remoteDataSource.verifyRemediesPayment(
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpaySignature,
+        orderId,
       );
       return Right(success);
     } catch (e) {

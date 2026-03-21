@@ -5,7 +5,7 @@ import 'package:vastuarunsharma/domain/providers/remidies/cart_providers.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/remidies_providers.dart';
 
 class RemidiesProductGrid extends ConsumerWidget {
-  const RemidiesProductGrid({Key? key}) : super(key: key);
+  const RemidiesProductGrid({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -90,8 +90,7 @@ class RemidiesProductGrid extends ConsumerWidget {
 class RemidiesProductCard extends ConsumerWidget {
   final Product product;
 
-  const RemidiesProductCard({Key? key, required this.product})
-    : super(key: key);
+  const RemidiesProductCard({super.key, required this.product});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
