@@ -9,19 +9,18 @@ import '../../widgets/glass_container.dart';
 class AppNavigationShell extends StatelessWidget {
   final Widget child;
 
-  const AppNavigationShell({
-    super.key,
-    required this.child,
-  });
+  const AppNavigationShell({super.key, required this.child});
 
   int _getIndexFromLocation(String location) {
     if (location.startsWith(RouteConstants.compass)) {
       return 1;
+    } else if (location.startsWith(RouteConstants.remidies)) {
+      return 2;
     } else if (location.startsWith(RouteConstants.courses) ||
         location.startsWith('/my-courses')) {
-      return 2;
-    } else if (location.startsWith(RouteConstants.profile)) {
       return 3;
+    } else if (location.startsWith(RouteConstants.profile)) {
+      return 4;
     }
     return 0; // Dashboard
   }
@@ -35,9 +34,12 @@ class AppNavigationShell extends StatelessWidget {
         context.go(RouteConstants.compass);
         break;
       case 2:
-        context.go(RouteConstants.courses);
+        context.go(RouteConstants.remidies);
         break;
       case 3:
+        context.go(RouteConstants.courses);
+        break;
+      case 4:
         context.go(RouteConstants.profile);
         break;
     }
@@ -56,11 +58,17 @@ class AppNavigationShell extends StatelessWidget {
         }
       },
       child: Scaffold(
-        extendBody: true, // Allow body to extend behind the navigation bar
+        // Only extend body on iOS so Android content doesn't get hidden
+        // behind the navigation bar by default.
+        extendBody: Platform.isIOS,
         body: child,
-        bottomNavigationBar: Platform.isIOS
-            ? _buildIOSNavigation(context, currentIndex)
-            : _buildAndroidNavigation(context, currentIndex),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          bottom: true,
+          child: Platform.isIOS
+              ? _buildIOSNavigation(context, currentIndex)
+              : _buildAndroidNavigation(context, currentIndex),
+        ),
       ),
     );
   }
@@ -71,39 +79,45 @@ class AppNavigationShell extends StatelessWidget {
       borderRadius: 30,
       opacity: 0.8,
       blur: 20,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
-        child: GNav(
-          rippleColor: Colors.grey[300]!,
-          hoverColor: Colors.grey[100]!,
-          gap: 8,
-          activeColor: AppColors.primary,
-          iconSize: 24,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          duration: const Duration(milliseconds: 400),
-          tabBackgroundColor: AppColors.primary.withOpacity(0.1),
-          color: Colors.grey[600],
-          tabs: const [
-            GButton(
-              icon: Icons.home_rounded,
-              text: 'Home',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 360;
+          final horizontalPadding = isNarrow ? 6.0 : 10.0;
+          final verticalPadding = isNarrow ? 6.0 : 8.0;
+          final gap = isNarrow ? 6.0 : 8.0;
+          final iconSize = isNarrow ? 20.0 : 24.0;
+          final btnPadding = EdgeInsets.symmetric(
+            horizontal: isNarrow ? 10 : 16,
+            vertical: isNarrow ? 8 : 12,
+          );
+
+          return Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: verticalPadding,
             ),
-            GButton(
-              icon: Icons.explore_rounded,
-              text: 'Compass',
+            child: GNav(
+              rippleColor: Colors.grey[300]!,
+              hoverColor: Colors.grey[100]!,
+              gap: gap,
+              activeColor: AppColors.primary,
+              iconSize: iconSize,
+              padding: btnPadding,
+              duration: const Duration(milliseconds: 400),
+              tabBackgroundColor: AppColors.primary.withOpacity(0.1),
+              color: Colors.grey[600],
+              tabs: const [
+                GButton(icon: Icons.home_rounded, text: 'Home'),
+                GButton(icon: Icons.explore_rounded, text: 'Compass'),
+                GButton(icon: Icons.store_rounded, text: 'Remidies'),
+                GButton(icon: Icons.school_rounded, text: 'Courses'),
+                GButton(icon: Icons.person_rounded, text: 'Profile'),
+              ],
+              selectedIndex: currentIndex,
+              onTabChange: (index) => _onDestinationSelected(context, index),
             ),
-            GButton(
-              icon: Icons.school_rounded,
-              text: 'Courses',
-            ),
-            GButton(
-              icon: Icons.person_rounded,
-              text: 'Profile',
-            ),
-          ],
-          selectedIndex: currentIndex,
-          onTabChange: (index) => _onDestinationSelected(context, index),
-        ),
+          );
+        },
       ),
     );
   }
@@ -142,8 +156,19 @@ class AppNavigationShell extends StatelessWidget {
         ),
         NavigationDestination(
           icon: Icon(
-            Icons.school_outlined,
+            Icons.store_outlined,
             color: currentIndex == 2 ? AppColors.primary : Colors.grey[600],
+          ),
+          selectedIcon: const Icon(
+            Icons.store_rounded,
+            color: AppColors.primary,
+          ),
+          label: 'Remidies',
+        ),
+        NavigationDestination(
+          icon: Icon(
+            Icons.school_outlined,
+            color: currentIndex == 3 ? AppColors.primary : Colors.grey[600],
           ),
           selectedIcon: const Icon(
             Icons.school_rounded,
@@ -154,7 +179,7 @@ class AppNavigationShell extends StatelessWidget {
         NavigationDestination(
           icon: Icon(
             Icons.person_outline,
-            color: currentIndex == 3 ? AppColors.primary : Colors.grey[600],
+            color: currentIndex == 4 ? AppColors.primary : Colors.grey[600],
           ),
           selectedIcon: const Icon(
             Icons.person_rounded,
