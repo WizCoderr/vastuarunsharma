@@ -118,33 +118,43 @@ class SectionModel extends Section {
 
 class PaymentPlanModel extends PaymentPlan {
   const PaymentPlanModel({
-    required super.id,
-    required super.courseId,
-    required super.title,
-    required super.description,
+    super.id,
+    required super.stageName,
     required super.amount,
-    required super.dueDays,
+    super.startDate,
+    super.endDate,
+    required super.dueAfterDays,
+    required super.orderIndex,
+    super.description,
   });
 
   factory PaymentPlanModel.fromJson(Map<String, dynamic> json) {
     return PaymentPlanModel(
-      id: json['id'] as String? ?? '',
-      courseId: json['courseId'] as String? ?? '',
-      title: json['title'] as String? ?? '',
-      description: json['description'] as String? ?? '',
-      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
-      dueDays: json['dueDays'] as int? ?? 0,
+      id: json['id'] as String?,
+      stageName: (json['stageName'] ?? json['name'] ?? '') as String,
+      amount: (json['amount'] ?? json['fee'] ?? 0.0).toDouble(),
+      startDate: json['startDate'] != null
+          ? DateTime.tryParse(json['startDate'])
+          : null,
+      endDate: json['endDate'] != null
+          ? DateTime.tryParse(json['endDate'])
+          : null,
+      dueAfterDays: (json['dueAfterDays'] ?? json['dueDays'] ?? 0) as int,
+      orderIndex: (json['orderIndex'] ?? 0) as int,
+      description: json['description'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'courseId': courseId,
-      'title': title,
-      'description': description,
+      'stageName': stageName,
       'amount': amount,
-      'dueDays': dueDays,
+      'startDate': startDate?.toIso8601String(),
+      'endDate': endDate?.toIso8601String(),
+      'dueAfterDays': dueAfterDays,
+      'orderIndex': orderIndex,
+      'description': description,
     };
   }
 }
@@ -159,14 +169,16 @@ class CourseModel extends Course {
     required super.published,
     required super.instructorId,
     required super.mediaType,
+    required super.isEnrolled,
+    super.serialNumber,
     required List<SectionModel> super.sections,
     List<LiveClassModel>? liveClasses,
-    List<PaymentPlanModel>? paymentPlans,
     super.endDate,
     super.paymentStatus,
+    super.activePaymentPlan,
+    super.paymentPlans,
   }) : super(
           liveClasses: liveClasses ?? const [],
-          paymentPlans: paymentPlans ?? const [],
         );
 
   factory CourseModel.fromJson(Map<String, dynamic> json) {
@@ -179,6 +191,8 @@ class CourseModel extends Course {
       published: json['published'] as bool? ?? false,
       instructorId: json['instructorId'] as String? ?? '',
       mediaType: json['mediaType'] as String? ?? '',
+      isEnrolled: (json['isEnrolled'] ?? json['enrolled'] ?? false) as bool,
+      serialNumber: json['serialNumber'] as String?,
       sections:
           (json['sections'] as List<dynamic>?)
               ?.map((e) => SectionModel.fromJson(e as Map<String, dynamic>))
@@ -189,14 +203,17 @@ class CourseModel extends Course {
               ?.map((e) => LiveClassModel.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      paymentPlans:
-          (json['paymentPlans'] as List<dynamic>?)
-              ?.map((e) => PaymentPlanModel.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
       endDate:
           json['endDate'] != null ? DateTime.tryParse(json['endDate']) : null,
       paymentStatus: json['paymentStatus'] as String?,
+      activePaymentPlan: json['activePaymentPlan'] != null
+          ? PaymentPlanModel.fromJson(
+              json['activePaymentPlan'] as Map<String, dynamic>)
+          : null,
+      paymentPlans: (json['paymentPlans'] as List<dynamic>?)
+              ?.map((e) => PaymentPlanModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
     );
   }
 
@@ -210,15 +227,16 @@ class CourseModel extends Course {
       'published': published,
       'instructorId': instructorId,
       'mediaType': mediaType,
+      'isEnrolled': isEnrolled,
+      'serialNumber': serialNumber,
       'sections': sections.map((e) => (e as SectionModel).toJson()).toList(),
       'liveClasses': liveClasses
           .map((e) => (e as LiveClassModel).toJson())
           .toList(),
-      'paymentPlans': paymentPlans
-          .map((e) => (e as PaymentPlanModel).toJson())
-          .toList(),
       'endDate': endDate?.toIso8601String(),
       'paymentStatus': paymentStatus,
+      'activePaymentPlan': (activePaymentPlan as PaymentPlanModel?)?.toJson(),
+      'paymentPlans': paymentPlans.map((e) => (e as PaymentPlanModel).toJson()).toList(),
     };
   }
 }

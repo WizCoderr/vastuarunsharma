@@ -188,7 +188,7 @@ class _EnrollmentScreenState extends ConsumerState<EnrollmentScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Error: ${error.toString()}'),
+              Text('Something went wrong. Please try again.'),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () =>

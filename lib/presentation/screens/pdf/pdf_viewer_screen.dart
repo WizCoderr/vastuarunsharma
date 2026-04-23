@@ -107,7 +107,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       body: const PDF().cachedFromUrl(
         widget.url,
         placeholder: (progress) => Center(child: Text('$progress %')),
-        errorWidget: (error) => Center(child: Text(error.toString())),
+        errorWidget: (error) => const Center(child: Text('Failed to load PDF. Please try again.')),
       ),
     );
   }

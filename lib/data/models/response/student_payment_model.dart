@@ -1,4 +1,8 @@
-enum PaymentStatus { PAID, PENDING, OVERDUE }
+enum PaymentStatus { paid, pending, overdue }
+
+extension PaymentStatusWire on PaymentStatus {
+  String get wireName => name.toUpperCase();
+}
 
 class StudentPaymentModel {
   final String id;
@@ -23,7 +27,8 @@ class StudentPaymentModel {
       courseId: json['courseId'] as String? ?? '',
       title: json['title'] as String? ?? '',
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
-      dueDate: DateTime.tryParse(json['dueDate'] as String? ?? '') ?? DateTime.now(),
+      dueDate:
+          DateTime.tryParse(json['dueDate'] as String? ?? '') ?? DateTime.now(),
       status: _parseStatus(json['status'] as String? ?? 'PENDING'),
     );
   }
@@ -31,12 +36,12 @@ class StudentPaymentModel {
   static PaymentStatus _parseStatus(String status) {
     switch (status.toUpperCase()) {
       case 'PAID':
-        return PaymentStatus.PAID;
+        return PaymentStatus.paid;
       case 'OVERDUE':
-        return PaymentStatus.OVERDUE;
+        return PaymentStatus.overdue;
       case 'PENDING':
       default:
-        return PaymentStatus.PENDING;
+        return PaymentStatus.pending;
     }
   }
 
@@ -47,7 +52,7 @@ class StudentPaymentModel {
       'title': title,
       'amount': amount,
       'dueDate': dueDate.toIso8601String(),
-      'status': status.name,
+      'status': status.wireName,
     };
   }
 }

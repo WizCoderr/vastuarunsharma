@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/route_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/course_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -128,6 +129,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     const SizedBox(height: 32),
 
+                    // My Registrations Section
+                    _buildRegistrationsSection(context, ref),
+                    const SizedBox(height: 24),
+
                     // Menu Items
                     _buildProfileMenuItem(
                       context,
@@ -141,7 +146,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       context,
                       onTap: () => _callWhatsAppChat("+919810520104"),
                       label: 'Contact Us',
-                      icon: Icons.school, // Using scroll icon for now to match screenshot "Contact Us" which looks like a scroll/graduation cap too? Wait, screenshot has same icon for both? No, bottom is a Graduation Cap?
+                      icon: Icons
+                          .school, // Using scroll icon for now to match screenshot "Contact Us" which looks like a scroll/graduation cap too? Wait, screenshot has same icon for both? No, bottom is a Graduation Cap?
                       // Actually, let's use a contact icon for Contact Us for better UX, though screenshot might be reusing an icon.
                       // Wait, the screenshot shows "Available Courses" (graduation cap) and "Contact Us" (looks like a graduation cap too but maybe slightly different? No, exact same icon).
                       // Use Icons.school for both if that's what the design is, or maybe Icons.contact_support.
@@ -262,9 +268,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-
-
-
   Widget _buildGuestView(BuildContext context) {
     return Center(
       child: Column(
@@ -291,6 +294,106 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildRegistrationsSection(BuildContext context, WidgetRef ref) {
+    final enrolledCoursesAsync = ref.watch(enrolledCoursesProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Text(
+            "My Registrations",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.onBackground,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        enrolledCoursesAsync.when(
+          data: (courses) {
+            final registeredCourses = courses
+                .where((c) => c.serialNumber != null)
+                .toList();
+
+            if (registeredCourses.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Text(
+                  "No active course registrations found",
+                  style: TextStyle(color: Colors.black54),
+                  textAlign: TextAlign.center,
+                ),
+              );
+            }
+
+            return ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: registeredCourses.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final course = registeredCourses[index];
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              course.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Registration ID: ${course.serialNumber}",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.primaryVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.verified, color: Colors.green, size: 20),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => Text("Failed to load registrations: $err"),
+        ),
+      ],
     );
   }
 

@@ -64,7 +64,7 @@ class EnrolledCoursesView extends ConsumerWidget {
               final course = courses[index];
               // Since this is the enrolled courses view, we can assume isEnrolled is true
               // or use the property if preferred, but logically they are enrolled.
-              final isEnrolled = course.enrolled ?? true;
+              final isEnrolled = course.isEnrolled;
 
               return CourseCard(
                 course: course,
@@ -89,7 +89,7 @@ class EnrolledCoursesView extends ConsumerWidget {
               const Icon(Icons.error_outline, size: 48, color: Colors.red),
               const SizedBox(height: 16),
               Text(
-                'Error: ${error.toString()}',
+                'Something went wrong. Please try again.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.red),
               ),

@@ -16,12 +16,19 @@ class CartItem {
   });
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
+    final productJson = json['product'];
     return CartItem(
-      id: json['id'] as String,
-      cartId: json['cartId'] as String,
-      productId: json['productId'] as String,
-      quantity: json['quantity'] as int,
-      product: Product.fromJson(json['product'] as Map<String, dynamic>),
+      id: (json['id'] ?? json['_id'] ?? '') as String,
+      cartId: (json['cartId'] ?? json['cart_id'] ?? '') as String,
+      productId:
+          (json['productId'] ?? json['product_id'] ??
+                  (productJson is Map ? productJson['id'] : null) ??
+                  '')
+              as String,
+      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
+      product: productJson is Map<String, dynamic>
+          ? Product.fromJson(productJson)
+          : Product.fromJson(const {}),
     );
   }
 

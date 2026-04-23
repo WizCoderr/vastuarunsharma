@@ -289,7 +289,7 @@ class _MyCoursesScreenState extends ConsumerState<MyCoursesScreen>
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Error: ${error.toString()}',
+                      'Something went wrong. Please try again.',
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: Colors.red),
                     ),

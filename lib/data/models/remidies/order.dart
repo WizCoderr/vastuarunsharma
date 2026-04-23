@@ -1,4 +1,5 @@
 import 'package:vastuarunsharma/data/models/remidies/order_item.dart';
+import 'package:vastuarunsharma/data/models/remidies/payment.dart';
 
 export 'package:vastuarunsharma/data/models/remidies/order_item.dart'
     show OrderStatus;
@@ -16,6 +17,7 @@ class Order {
   final String city;
   final String state;
   final String postalCode;
+  final Payment? payment;
 
   Order({
     required this.id,
@@ -30,6 +32,7 @@ class Order {
     required this.city,
     required this.state,
     required this.postalCode,
+    this.payment,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -50,6 +53,9 @@ class Order {
       city: json['city'] as String? ?? '',
       state: json['state'] as String? ?? '',
       postalCode: json['postalCode'] as String? ?? '',
+      payment: json['payment'] != null
+          ? Payment.fromJson(json['payment'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -58,7 +64,7 @@ class Order {
       'id': id,
       'userId': userId,
       'totalAmount': totalAmount,
-      'status': status.name,
+      'status': status.wireName,
       'items': items.map((item) => item.toJson()).toList(),
       'createdAt': createdAt.toIso8601String(),
       'fullName': fullName,
@@ -67,27 +73,29 @@ class Order {
       'city': city,
       'state': state,
       'postalCode': postalCode,
+      if (payment != null) 'payment': payment!.toJson(),
     };
   }
 
   static OrderStatus _parseOrderStatus(String status) {
+    final normalized = status.toUpperCase();
     return OrderStatus.values.firstWhere(
-      (e) => e.name == status,
-      orElse: () => OrderStatus.PENDING,
+      (e) => e.wireName == normalized,
+      orElse: () => OrderStatus.pending,
     );
   }
 
   String get statusLabel {
     switch (status) {
-      case OrderStatus.PENDING:
+      case OrderStatus.pending:
         return 'Pending';
-      case OrderStatus.PAID:
-        return 'Paid';
-      case OrderStatus.SHIPPED:
+      case OrderStatus.processing:
+        return 'Processing';
+      case OrderStatus.shipped:
         return 'Shipped';
-      case OrderStatus.DELIVERED:
+      case OrderStatus.delivered:
         return 'Delivered';
-      case OrderStatus.CANCELLED:
+      case OrderStatus.cancelled:
         return 'Cancelled';
     }
   }

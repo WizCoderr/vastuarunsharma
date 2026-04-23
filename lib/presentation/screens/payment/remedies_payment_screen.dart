@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../../core/constants/route_constants.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/payment_provider.dart';
 import '../../providers/refresh_provider.dart';
 
@@ -109,16 +110,17 @@ class _RemediesPaymentScreenState extends ConsumerState<RemediesPaymentScreen> {
 
       if (orderData != null) {
         _currentOrderId = orderData['id'];
+        final user = ref.read(authStateProvider).value;
         var options = {
           'key': orderData['key'],
           'amount': orderData['amount'],
           'name': 'Vastu Arun Sharma',
           'description': orderData['description'],
           'order_id': orderData['id'],
-          'timeout': 120, // in seconds
+          'timeout': 120,
           'prefill': {
-            'contact': '9876543210', // Should come from user profile
-            'email': 'user@example.com', // Should come from user profile
+            'contact': user?.mobileNumber ?? '',
+            'email': user?.email ?? '',
           },
         };
         _razorpay.open(options);

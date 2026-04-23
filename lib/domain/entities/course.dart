@@ -43,21 +43,29 @@ class Section {
 }
 
 class PaymentPlan {
-  final String id;
-  final String courseId;
-  final String title;
-  final String description;
+  final String? id;
+  final String stageName;
   final double amount;
-  final int dueDays;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final int dueAfterDays; // 0 = Admission Fee, >0 = Installment
+  final int orderIndex;
+  final String? description;
 
   const PaymentPlan({
-    required this.id,
-    required this.courseId,
-    required this.title,
-    required this.description,
+    this.id,
+    required this.stageName,
     required this.amount,
-    required this.dueDays,
+    this.startDate,
+    this.endDate,
+    required this.dueAfterDays,
+    required this.orderIndex,
+    this.description,
   });
+
+  bool get isWindow => startDate != null && endDate != null;
+  bool get isAdmissionFee => dueAfterDays == 0;
+  bool get isInstallment => dueAfterDays > 0;
 }
 
 class Course {
@@ -69,13 +77,15 @@ class Course {
   final bool published;
   final String instructorId;
   final String mediaType;
-  final bool? enrolled;
+  final bool isEnrolled;
+  final String? serialNumber;
   final List<Section> sections;
   final List<Resource> resources;
   final List<LiveClass> liveClasses;
-  final List<PaymentPlan> paymentPlans;
   final DateTime? endDate;
   final String? paymentStatus;
+  final PaymentPlan? activePaymentPlan;
+  final List<PaymentPlan> paymentPlans;
 
   const Course({
     required this.id,
@@ -86,12 +96,14 @@ class Course {
     required this.published,
     required this.instructorId,
     required this.mediaType,
-    this.enrolled,
+    required this.isEnrolled,
+    this.serialNumber,
     this.sections = const [],
     this.resources = const [],
     this.liveClasses = const [],
-    this.paymentPlans = const [],
     this.endDate,
     this.paymentStatus,
+    this.activePaymentPlan,
+    this.paymentPlans = const [],
   });
 }

@@ -12,16 +12,19 @@ import '../../providers/live_class_provider.dart';
 import '../../providers/video_player_provider.dart';
 import '../../providers/progress_provider.dart';
 import '../../../data/models/request/progress_update_request.dart';
+import '../../../domain/entities/recording.dart';
 import 'live_session_redirect_screen.dart';
 
 class VideoPlayerScreen extends ConsumerStatefulWidget {
   final String courseId;
   final String? initialLectureId;
+  final String? initialRecordingId;
 
   const VideoPlayerScreen({
     super.key,
     required this.courseId,
     this.initialLectureId,
+    this.initialRecordingId,
   });
 
   @override
@@ -31,9 +34,11 @@ class VideoPlayerScreen extends ConsumerStatefulWidget {
 class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   Lecture? _currentLecture;
   int _currentSectionIndex = 0;
-  int _currentLectureIndex = 0;
+  int _currentLectureIndex = -1; // -1 means it could be a recording
+  int _currentRecordingIndex = -1;
   LiveClass? _availableLiveClass;
   bool _isLoadingContent = false;
+  List<Recording> _courseRecordings = [];
 
   // Store reference to avoid using ref in dispose()
   late final VideoPlayerNotifier _videoPlayerNotifier;
@@ -108,8 +113,25 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       _isLoadingContent = false;
     });
   }
-  
 
+  void _playRecording(Recording recording, int index) {
+    setState(() {
+      _currentRecordingIndex = index;
+      _currentSectionIndex = -1;
+      _currentLectureIndex = -1;
+    });
+
+    // Map recording to a lecture-like structure for the player
+    final lecture = Lecture(
+      id: recording.id,
+      title: recording.title,
+      videoUrl: recording.videoUrl,
+      videoProvider:
+          'YouTube', // Recordings are usually YouTube links in this app
+    );
+
+    _loadLecture(lecture);
+  }
 
   void _playLecture(Course course, int sectionIndex, int lectureIndex) {
     final section = course.sections[sectionIndex];
@@ -118,12 +140,46 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     setState(() {
       _currentSectionIndex = sectionIndex;
       _currentLectureIndex = lectureIndex;
+      _currentRecordingIndex = -1;
     });
 
     _loadLecture(lecture);
   }
 
+  bool _canPlayPrevious(Course course) {
+    if (_currentRecordingIndex != -1) {
+      return _currentRecordingIndex > 0;
+    }
+    if (_currentLectureIndex > 0) return true;
+    for (int i = _currentSectionIndex - 1; i >= 0; i--) {
+      if (course.sections[i].lectures.isNotEmpty) return true;
+    }
+    return false;
+  }
+
+  bool _canPlayNext(Course course) {
+    if (_currentRecordingIndex != -1) {
+      return _currentRecordingIndex < _courseRecordings.length - 1;
+    }
+    final currentSection = course.sections[_currentSectionIndex];
+    if (_currentLectureIndex < currentSection.lectures.length - 1) return true;
+    for (int i = _currentSectionIndex + 1; i < course.sections.length; i++) {
+      if (course.sections[i].lectures.isNotEmpty) return true;
+    }
+    return false;
+  }
+
   void _playNextLecture(Course course) {
+    if (_currentRecordingIndex != -1) {
+      if (_currentRecordingIndex < _courseRecordings.length - 1) {
+        _playRecording(
+          _courseRecordings[_currentRecordingIndex + 1],
+          _currentRecordingIndex + 1,
+        );
+      }
+      return;
+    }
+
     final currentSection = course.sections[_currentSectionIndex];
 
     if (_currentLectureIndex < currentSection.lectures.length - 1) {
@@ -140,6 +196,16 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   }
 
   void _playPreviousLecture(Course course) {
+    if (_currentRecordingIndex != -1) {
+      if (_currentRecordingIndex > 0) {
+        _playRecording(
+          _courseRecordings[_currentRecordingIndex - 1],
+          _currentRecordingIndex - 1,
+        );
+      }
+      return;
+    }
+
     if (_currentLectureIndex > 0) {
       _playLecture(course, _currentSectionIndex, _currentLectureIndex - 1);
     } else {
@@ -169,43 +235,27 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     return count + _currentLectureIndex + 1;
   }
 
-  bool _canPlayPrevious(Course course) {
-    if (_currentLectureIndex > 0) return true;
-    for (int i = _currentSectionIndex - 1; i >= 0; i--) {
-      if (course.sections[i].lectures.isNotEmpty) return true;
-    }
-    return false;
-  }
-
-  bool _canPlayNext(Course course) {
-    final currentSection = course.sections[_currentSectionIndex];
-    if (_currentLectureIndex < currentSection.lectures.length - 1) return true;
-    for (int i = _currentSectionIndex + 1; i < course.sections.length; i++) {
-      if (course.sections[i].lectures.isNotEmpty) return true;
-    }
-    return false;
-  }
-  
   Future<void> _onVideoEnded() async {
-      // Called when video ends
-      if (_currentLecture != null) {
-          final req = ProgressUpdateRequest(
-            lectureId: _currentLecture!.id,
-            courseId: widget.courseId,
-            status: 'COMPLETED',
-            watchedDuration: 0, // Duration tracking tricky with iframe without proper metadata stream mapping
-          );
-          _saveProgress(req);
-      }
+    // Called when video ends
+    if (_currentLecture != null) {
+      final req = ProgressUpdateRequest(
+        lectureId: _currentLecture!.id,
+        courseId: widget.courseId,
+        status: 'COMPLETED',
+        watchedDuration:
+            0, // Duration tracking tricky with iframe without proper metadata stream mapping
+      );
+      _saveProgress(req);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final courseAsync = ref.watch(courseDetailsProvider(widget.courseId));
-    
-    // Iframe player handles fullscreen overlay internally or differently. 
+
+    // Iframe player handles fullscreen overlay internally or differently.
     // We just return Scaffold.
-    
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -228,53 +278,77 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                 course.title,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              Text(
-                'Lecture ${_getCurrentLectureNumber(course)} of ${_getTotalLectures(course)}',
-                style: TextStyle(
-                  color: AppColors.secondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
+              if (_currentRecordingIndex != -1)
+                Text(
+                  'Recording ${_currentRecordingIndex + 1} of ${_courseRecordings.length}',
+                  style: TextStyle(
+                    color: AppColors.secondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                  ),
+                )
+              else
+                Text(
+                  'Lecture ${_getCurrentLectureNumber(course)} of ${_getTotalLectures(course)}',
+                  style: TextStyle(
+                    color: AppColors.secondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
-              ),
             ],
           ),
-          loading: () => const Text(
-            'Loading...',
-            style: TextStyle(color: Colors.white),
-          ),
+          loading: () =>
+              const Text('Loading...', style: TextStyle(color: Colors.white)),
           error: (error, stack) =>
               const Text('Error', style: TextStyle(color: Colors.white)),
         ),
       ),
       body: courseAsync.when(
         data: (course) => _buildContent(course),
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
+        loading: () =>
+            const Center(child: CircularProgressIndicator(color: Colors.white)),
         error: (error, stack) => _buildError(error),
       ),
     );
   }
 
   Widget _buildContent(Course course) {
-    if (course.sections.isEmpty) {
-      return const Center(
-        child: Text(
-          'No lectures available',
-          style: TextStyle(color: Colors.white),
-        ),
-      );
+    // ... rest of content logic ...
+
+    if (course.sections.isEmpty && _courseRecordings.isEmpty) {
+      // Check for recordings if not already loaded
+      ref.listen(courseRecordingsProvider(widget.courseId), (previous, next) {
+        if (next.hasValue) {
+          setState(() {
+            _courseRecordings = next.value!;
+          });
+        }
+      });
+
+      // Still empty after potential listen setup?
+      // (Actually we should probably use recordingsAsync here)
     }
+
+    // Use a separate async watch for recordings
+    final recordingsAsync = ref.watch(
+      courseRecordingsProvider(widget.courseId),
+    );
 
     if (_currentLecture == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (widget.initialLectureId != null) {
+        if (widget.initialRecordingId != null && recordingsAsync.hasValue) {
+          _findAndPlayRecording(
+            recordingsAsync.value!,
+            widget.initialRecordingId!,
+          );
+        } else if (widget.initialLectureId != null) {
           _findAndPlayLecture(course, widget.initialLectureId!);
         } else {
           _playFirstAvailableLecture(course);
@@ -288,7 +362,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     // Listen for completion
     ref.listen(videoPlayerProvider, (previous, next) {
       if (next?.isCompleted == true && previous?.isCompleted != true) {
-         _onVideoEnded();
+        _onVideoEnded();
       }
     });
 
@@ -311,35 +385,36 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                   ),
                 )
               : (controller != null)
-                  ? Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        SizedBox.expand(
-                          child: YoutubePlayer(
-                            controller: controller,
-                            aspectRatio: 16 / 9,
-                          ),
-                        ),
-                        // Overlay to hide YouTube's copy link icon (bottom-left)
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          child: Container(
-                            width: 48,
-                            height: 48,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ],
-                    )
-                  : const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
+              ? Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    SizedBox.expand(
+                      child: YoutubePlayer(
+                        key: ValueKey(controller.hashCode),
+                        controller: controller,
+                        aspectRatio: 16 / 9,
+                      ),
                     ),
+                    // Overlay to hide YouTube's copy link icon (bottom-left)
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      child: Container(
+                        width: 72,
+                        height: 72,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
+                )
+              : const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                ),
         ),
 
         // Course Info Header
         _buildCourseInfoHeader(course),
-        
+
         // Navigation
         _buildNavigationControls(course),
 
@@ -347,26 +422,31 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         Expanded(
           child: Container(
             color: AppColors.background,
-            child: ListView.separated(
+            child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: course.sections.length,
-              separatorBuilder: (context, index) => Container(
-                margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                height: 1,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      AppColors.secondaryVariant.withOpacity(0.5),
-                      Colors.transparent,
-                    ],
+              children: [
+                // Lectures Sections
+                ...course.sections.asMap().entries.map((entry) {
+                  final sectionIndex = entry.key;
+                  final section = entry.value;
+                  return _buildSectionTile(course, sectionIndex, section);
+                }),
+
+                // Recordings Section
+                recordingsAsync.when(
+                  data: (recordings) {
+                    if (recordings.isEmpty) return const SizedBox.shrink();
+                    return _buildRecordingsSection(recordings);
+                  },
+                  loading: () => const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    ),
                   ),
+                  error: (err, stack) => const SizedBox.shrink(),
                 ),
-              ),
-              itemBuilder: (context, sectionIndex) {
-                final section = course.sections[sectionIndex];
-                return _buildSectionTile(course, sectionIndex, section);
-              },
+              ],
             ),
           ),
         ),
@@ -374,10 +454,128 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     );
   }
 
+  Widget _buildRecordingsSection(List<Recording> recordings) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Row(
+            children: [
+              const Icon(Icons.history, size: 20, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Text(
+                "Class Recordings",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                "${recordings.length} Videos",
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+        ...recordings.asMap().entries.map((entry) {
+          final index = entry.key;
+          final recording = entry.value;
+          final isPlaying = _currentRecordingIndex == index;
+
+          return _buildRecordingTile(recording, index, isPlaying);
+        }),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildRecordingTile(Recording recording, int index, bool isPlaying) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      decoration: BoxDecoration(
+        color: isPlaying
+            ? AppColors.secondaryVariant.withOpacity(0.4)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isPlaying ? AppColors.primary : Colors.grey.shade200,
+          width: isPlaying ? 2 : 1,
+        ),
+      ),
+      child: InkWell(
+        onTap: () => _playRecording(recording, index),
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: isPlaying ? AppColors.primary : Colors.grey[200],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isPlaying ? Icons.pause : Icons.play_arrow,
+                  color: isPlaying ? Colors.white : Colors.grey[600],
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      recording.title,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: isPlaying
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: isPlaying ? AppColors.primary : Colors.black87,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      "${recording.durationMinutes} mins",
+                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _findAndPlayRecording(List<Recording> recordings, String recordingId) {
+    for (int i = 0; i < recordings.length; i++) {
+      if (recordings[i].id == recordingId) {
+        _playRecording(recordings[i], i);
+        return;
+      }
+    }
+  }
+
   Widget _buildCourseInfoHeader(Course course) {
+    final bool isRecording = _currentRecordingIndex != -1;
     final totalLectures = _getTotalLectures(course);
     final currentLecture = _getCurrentLectureNumber(course);
-    final progress = totalLectures > 0 ? currentLecture / totalLectures : 0.0;
+
+    final totalItems = isRecording ? _courseRecordings.length : totalLectures;
+    final currentItem = isRecording
+        ? _currentRecordingIndex + 1
+        : currentLecture;
+    final progress = totalItems > 0 ? currentItem / totalItems : 0.0;
+    final label = isRecording ? 'Recording' : 'Lecture';
 
     return Container(
       color: AppColors.background,
@@ -398,7 +596,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Lecture $currentLecture of $totalLectures',
+                      '$label $currentItem of $totalItems',
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -422,7 +620,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
           ),
           const SizedBox(width: 16),
           Text(
-            '${course.sections.length} Sections',
+            isRecording
+                ? '${_courseRecordings.length} Recordings'
+                : '${course.sections.length} Sections',
             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
           ),
         ],
@@ -717,7 +917,11 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
               const SizedBox(height: 24),
               const Text(
                 "Access Restricted",
-                style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 12),
               const Text(
@@ -727,17 +931,25 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
               ),
               const SizedBox(height: 32),
               ElevatedButton(
-                onPressed: () => context.push(RouteConstants.paymentProgressPath(widget.courseId)),
+                onPressed: () => context.push(
+                  RouteConstants.paymentProgressPath(widget.courseId),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.amber.shade700,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 12,
+                  ),
                 ),
                 child: const Text("Go to Payments"),
               ),
               TextButton(
                 onPressed: () => context.go(RouteConstants.myCourses),
-                child: const Text("Back to My Courses", style: TextStyle(color: Colors.white60)),
+                child: const Text(
+                  "Back to My Courses",
+                  style: TextStyle(color: Colors.white60),
+                ),
               ),
             ],
           ),
@@ -753,11 +965,19 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.history_toggle_off, size: 64, color: Colors.redAccent),
+              const Icon(
+                Icons.history_toggle_off,
+                size: 64,
+                color: Colors.redAccent,
+              ),
               const SizedBox(height: 24),
               const Text(
                 "Course Finished",
-                style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 12),
               const Text(
@@ -771,7 +991,10 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.redAccent,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 12,
+                  ),
                 ),
                 child: const Text("Browse Other Courses"),
               ),
@@ -788,7 +1011,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
           const Icon(Icons.error_outline, size: 48, color: Colors.red),
           const SizedBox(height: 16),
           Text(
-            'Error: ${error.toString()}',
+            'Something went wrong. Please try again.',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white),
           ),

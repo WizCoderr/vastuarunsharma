@@ -63,6 +63,25 @@ class CourseCard extends StatelessWidget {
               course.title,
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
             ),
+            if (isEnrolled && course.serialNumber != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    "ID: ${course.serialNumber}",
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ),
             const SizedBox(height: 6),
             Text(
               course.description,

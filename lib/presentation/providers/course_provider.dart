@@ -81,7 +81,8 @@ final allCoursesProvider = FutureProvider<List<Course>>((ref) async {
             published: r.published,
             instructorId: r.instructorId,
             mediaType: r.mediaType ?? 'image',
-            enrolled: r.enrolled,
+            isEnrolled: r.isEnrolled,
+            serialNumber: r.serialNumber,
             sections: r.sections
                 .map(
                   (s) => Section(
@@ -107,6 +108,32 @@ final allCoursesProvider = FutureProvider<List<Course>>((ref) async {
                     title: res.title,
                     type: res.type,
                     url: res.url,
+                  ),
+                )
+                .toList(),
+            activePaymentPlan: r.activePaymentPlan != null
+                ? PaymentPlan(
+                    id: r.activePaymentPlan!.id,
+                    stageName: r.activePaymentPlan!.stageName,
+                    amount: r.activePaymentPlan!.amount,
+                    startDate: r.activePaymentPlan!.startDate,
+                    endDate: r.activePaymentPlan!.endDate,
+                    dueAfterDays: r.activePaymentPlan!.dueAfterDays,
+                    orderIndex: r.activePaymentPlan!.orderIndex,
+                    description: r.activePaymentPlan!.description,
+                  )
+                : null,
+            paymentPlans: r.paymentPlans
+                .map(
+                  (pp) => PaymentPlan(
+                    id: pp.id,
+                    stageName: pp.stageName,
+                    amount: pp.amount,
+                    startDate: pp.startDate,
+                    endDate: pp.endDate,
+                    dueAfterDays: pp.dueAfterDays,
+                    orderIndex: pp.orderIndex,
+                    description: pp.description,
                   ),
                 )
                 .toList(),
@@ -182,7 +209,8 @@ Course _mapFromResponse(CourseResponse r) {
     published: r.published,
     instructorId: r.instructorId,
     mediaType: r.mediaType ?? 'image',
-    enrolled: r.enrolled,
+    isEnrolled: r.isEnrolled,
+    serialNumber: r.serialNumber,
     sections: r.sections
         .map(
           (s) => Section(
@@ -208,6 +236,32 @@ Course _mapFromResponse(CourseResponse r) {
             title: res.title,
             type: res.type,
             url: res.url,
+          ),
+        )
+        .toList(),
+    activePaymentPlan: r.activePaymentPlan != null
+        ? PaymentPlan(
+            id: r.activePaymentPlan!.id,
+            stageName: r.activePaymentPlan!.stageName,
+            amount: r.activePaymentPlan!.amount,
+            startDate: r.activePaymentPlan!.startDate,
+            endDate: r.activePaymentPlan!.endDate,
+            dueAfterDays: r.activePaymentPlan!.dueAfterDays,
+            orderIndex: r.activePaymentPlan!.orderIndex,
+            description: r.activePaymentPlan!.description,
+          )
+        : null,
+    paymentPlans: r.paymentPlans
+        .map(
+          (pp) => PaymentPlan(
+            id: pp.id,
+            stageName: pp.stageName,
+            amount: pp.amount,
+            startDate: pp.startDate,
+            endDate: pp.endDate,
+            dueAfterDays: pp.dueAfterDays,
+            orderIndex: pp.orderIndex,
+            description: pp.description,
           ),
         )
         .toList(),

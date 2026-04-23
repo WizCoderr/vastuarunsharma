@@ -40,8 +40,8 @@ class _CoursesScreenState extends ConsumerState<CoursesScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            // Tabs
 
+            // Tabs
             GlassContainer(
               borderRadius: 30,
               padding: const EdgeInsets.all(4),
@@ -76,7 +76,7 @@ class _CoursesScreenState extends ConsumerState<CoursesScreen> {
                             itemCount: courses.length,
                             itemBuilder: (context, index) {
                               final course = courses[index];
-                              final isEnrolled = course.enrolled ?? false;
+                              final isEnrolled = course.isEnrolled;
 
                               return CourseCard(
                                 course: course,
@@ -96,7 +96,8 @@ class _CoursesScreenState extends ConsumerState<CoursesScreen> {
                                     );
                                   } else {
                                     context.push(
-                                      RouteConstants.paymentPath(course.id),
+                                      RouteConstants.checkoutPath,
+                                      extra: course.id,
                                     );
                                   }
                                 },
@@ -117,7 +118,7 @@ class _CoursesScreenState extends ConsumerState<CoursesScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'Error: ${error.toString()}',
+                                'Something went wrong. Please try again.',
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(color: Colors.red),
                               ),
@@ -192,10 +193,12 @@ class _CoursesScreenState extends ConsumerState<CoursesScreen> {
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withOpacity(0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
-                    )
+                    ),
                   ]
                 : null,
           ),

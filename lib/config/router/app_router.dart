@@ -3,39 +3,46 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vastuarunsharma/presentation/screens/compass/screens/SixteenZoneCompass.dart';
 import 'package:vastuarunsharma/presentation/screens/compass/screens/ThirtytwoZoneCompass.dart';
-import '../../core/constants/route_constants.dart';
-import '../../presentation/screens/remidies/remidies_screen.dart';
 
+import '../../core/constants/route_constants.dart';
 import '../../presentation/providers/auth_provider.dart';
-import '../../presentation/screens/landing/landing_screen.dart';
+import '../../presentation/screens/auth/forgot_password_screen.dart';
 import '../../presentation/screens/auth/login_screen.dart';
 import '../../presentation/screens/auth/register_screen.dart';
-import '../../presentation/screens/dashboard/dashboard_screen.dart';
-import '../../presentation/screens/courses/courses_list_screen.dart';
-import '../../presentation/screens/courses/course_details_screen.dart';
-import '../../presentation/screens/courses/my_courses_screen.dart';
-import '../../presentation/screens/enrollment/enrollment_screen.dart';
-import '../../presentation/screens/video/video_player_screen.dart';
-import '../../presentation/screens/profile/profile_screen.dart';
-import '../../presentation/screens/stats/stats_screen.dart';
-import '../../presentation/screens/payment/payment_screen.dart';
-import '../../presentation/screens/payment/payment_progress_screen.dart';
-import '../../presentation/screens/payment/remedies_payment_screen.dart';
-import '../../presentation/screens/payment/my_installments_screen.dart';
-import '../../presentation/screens/pdf/pdf_viewer_screen.dart';
-import '../../presentation/screens/compass/screens/compas_screen.dart';
-import '../../presentation/screens/compass/compass_result_screen.dart';
+import '../../presentation/screens/auth/reset_password_screen.dart';
 import '../../presentation/screens/compass/compas_home.dart';
+import '../../presentation/screens/compass/compass_result_screen.dart';
+import '../../presentation/screens/compass/screens/compas_screen.dart';
+import '../../presentation/screens/courses/course_details_screen.dart';
+import '../../presentation/screens/courses/courses_list_screen.dart';
+import '../../presentation/screens/courses/my_courses_screen.dart';
+import '../../presentation/screens/dashboard/dashboard_screen.dart';
+import '../../presentation/screens/enrollment/enrollment_screen.dart';
+import '../../presentation/screens/landing/landing_screen.dart';
+import '../../presentation/screens/payment/payment_progress_screen.dart';
+import '../../presentation/screens/payment/payment_screen.dart';
+import '../../presentation/screens/payment/remedies_payment_screen.dart';
+import '../../presentation/screens/admin/remidies/admin_bulk_tiers_screen.dart';
+import '../../presentation/screens/admin/remidies/admin_coupons_screen.dart';
+import '../../presentation/screens/pdf/pdf_viewer_screen.dart';
+import '../../presentation/screens/profile/profile_screen.dart';
+import '../../presentation/screens/remidies/remidies_screen.dart';
+import '../../presentation/screens/stats/stats_screen.dart';
+import '../../presentation/screens/video/video_player_screen.dart';
 import '../../presentation/widgets/navigation/app_navigation_shell.dart';
 import 'router_notifier.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   final notifier = ref.watch(routerNotifierProvider);
 
-  // Cache auth state to avoid calling ref.read during widget disposal
   bool isLoggedIn() {
     final authState = ref.read(authStateProvider);
     return authState.asData?.value != null;
+  }
+
+  bool isAdmin() {
+    final authState = ref.read(authStateProvider);
+    return authState.asData?.value?.role == 'admin';
   }
 
   return GoRouter(
@@ -45,33 +52,31 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         Scaffold(body: Center(child: Text('Error: ${state.error}'))),
     redirect: (context, state) {
       final loggedIn = isLoggedIn();
-      final isLoggingIn =
+      final isAuthRoute =
           state.matchedLocation == RouteConstants.login ||
-          state.matchedLocation == RouteConstants.register;
+          state.matchedLocation == RouteConstants.register ||
+          state.matchedLocation == RouteConstants.forgotPassword ||
+          state.matchedLocation == RouteConstants.resetPassword;
 
-      // If not logged in and not heading to auth/landing/courses/public pages, redirect to landing
       if (!loggedIn &&
-          !isLoggingIn &&
+          !isAuthRoute &&
           state.matchedLocation != RouteConstants.landing &&
           state.matchedLocation != RouteConstants.courses &&
           state.matchedLocation != RouteConstants.dashboard &&
-          !state.matchedLocation.startsWith(
-            RouteConstants.compass,
-          ) && // Allow all compass routes
+          !state.matchedLocation.startsWith(RouteConstants.compass) &&
           state.matchedLocation != RouteConstants.compassResult &&
           state.matchedLocation != RouteConstants.profile &&
           !state.matchedLocation.startsWith('/course/')) {
         return RouteConstants.landing;
       }
+
       return null;
     },
     routes: [
-      // Routes outside shell (no bottom nav)
       GoRoute(
         path: RouteConstants.landing,
         builder: (context, state) => const LandingScreen(),
         redirect: (context, state) {
-          // If logged in, skip landing
           if (isLoggedIn()) {
             return RouteConstants.dashboard;
           }
@@ -90,6 +95,20 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final returnUrl = state.uri.queryParameters['returnUrl'];
           return RegisterScreen(returnUrl: returnUrl);
+        },
+      ),
+      GoRoute(
+        path: RouteConstants.forgotPassword,
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: RouteConstants.resetPassword,
+        builder: (context, state) {
+          final extraToken = state.extra is String
+              ? state.extra as String
+              : null;
+          final token = state.uri.queryParameters['token'] ?? extraToken;
+          return ResetPasswordScreen(token: token);
         },
       ),
       GoRoute(
@@ -112,7 +131,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/video/:courseId',
         builder: (context, state) {
           final courseId = state.pathParameters['courseId'] ?? '';
-          return VideoPlayerScreen(courseId: courseId);
+          final lectureId = state.uri.queryParameters['lectureId'];
+          final recordingId = state.uri.queryParameters['recordingId'];
+          return VideoPlayerScreen(
+            courseId: courseId,
+            initialLectureId: lectureId,
+            initialRecordingId: recordingId,
+          );
         },
       ),
       GoRoute(
@@ -122,10 +147,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteConstants.checkoutPath,
         builder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>;
-          final courseId = extra['courseId'] as String;
-          final paymentId = extra['paymentId'] as String?;
-          return CheckoutScreen(courseId: courseId, paymentId: paymentId);
+          final courseId = state.extra as String;
+          return CheckoutScreen(courseId: courseId);
+        },
+        redirect: (context, state) {
+          if (!isLoggedIn()) {
+            return '${RouteConstants.login}?returnUrl=${state.matchedLocation}';
+          }
+          return null;
+        },
+      ),
+      GoRoute(
+        path: '/payment/:courseId',
+        builder: (context, state) {
+          final courseId = state.pathParameters['courseId'] ?? '';
+          return CheckoutScreen(courseId: courseId);
         },
         redirect: (context, state) {
           if (!isLoggedIn()) {
@@ -148,20 +184,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: RouteConstants.myInstallmentsPath,
-        builder: (context, state) {
-          final courseId = state.extra as String;
-          return MyInstallmentsScreen(courseId: courseId);
-        },
-        redirect: (context, state) {
-          if (!isLoggedIn()) {
-            return '${RouteConstants.login}?returnUrl=${state.matchedLocation}';
-          }
-          return null;
-        },
-      ),
-
-      GoRoute(
         path: '/payment-progress/:courseId',
         builder: (context, state) {
           final courseId = state.pathParameters['courseId'] ?? '';
@@ -174,8 +196,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           return null;
         },
       ),
-
-      // Shell route with bottom navigation
       ShellRoute(
         builder: (context, state, child) => AppNavigationShell(child: child),
         routes: [
@@ -225,9 +245,26 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: RouteConstants.profile,
             builder: (context, state) => const ProfileScreen(),
-            // No redirect - show guest view with login prompt
           ),
         ],
+      ),
+      GoRoute(
+        path: RouteConstants.adminRemidiesCoupons,
+        builder: (context, state) => const AdminCouponsScreen(),
+        redirect: (context, state) {
+          if (!isLoggedIn()) return RouteConstants.login;
+          if (!isAdmin()) return RouteConstants.dashboard;
+          return null;
+        },
+      ),
+      GoRoute(
+        path: RouteConstants.adminRemidiesBulkTiers,
+        builder: (context, state) => const AdminBulkTiersScreen(),
+        redirect: (context, state) {
+          if (!isLoggedIn()) return RouteConstants.login;
+          if (!isAdmin()) return RouteConstants.dashboard;
+          return null;
+        },
       ),
       GoRoute(
         path: '/pdf-viewer',
@@ -239,7 +276,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           );
         },
       ),
-
       GoRoute(
         path: RouteConstants.compassResult,
         builder: (context, state) {

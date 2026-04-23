@@ -199,7 +199,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {},
+                    onPressed: isLoading
+                        ? null
+                        : () => context.push(RouteConstants.forgotPassword),
                     child: Text(
                       "Forgot Password?",
                       style: TextStyle(color: Colors.grey.shade700),

@@ -29,7 +29,7 @@ class PaymentProgressScreen extends ConsumerWidget {
           }
 
           final totalPaid = payments
-              .where((p) => p.status == PaymentStatus.PAID)
+              .where((p) => p.status == PaymentStatus.paid)
               .fold<double>(0, (sum, p) => sum + p.amount);
           final totalAmount = payments.fold<double>(0, (sum, p) => sum + p.amount);
           final progress = totalAmount > 0 ? totalPaid / totalAmount : 0.0;
@@ -79,11 +79,10 @@ class PaymentProgressScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 30),
               const Text(
-                "Installment Schedule",
+                "Payment History",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 16),
-              ...payments.map((p) => _PaymentTile(payment: p)),
+              const SizedBox(height: 16),              ...payments.map((p) => _PaymentTile(payment: p)),
             ],
           );
         },
@@ -100,8 +99,8 @@ class _PaymentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isPaid = payment.status == PaymentStatus.PAID;
-    final isOverdue = payment.status == PaymentStatus.OVERDUE;
+    final isPaid = payment.status == PaymentStatus.paid;
+    final isOverdue = payment.status == PaymentStatus.overdue;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -151,10 +150,7 @@ class _PaymentTile extends StatelessWidget {
               if (!isPaid)
                 TextButton(
                   onPressed: () {
-                    context.push(
-                      '/payment/${payment.courseId}',
-                      extra: {'paymentId': payment.id},
-                    );
+                    context.push('/payment/${payment.courseId}');
                   },
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
@@ -173,15 +169,15 @@ class _PaymentTile extends StatelessWidget {
     IconData icon;
     Color color;
     switch (status) {
-      case PaymentStatus.PAID:
+      case PaymentStatus.paid:
         icon = Icons.check_circle;
         color = Colors.green;
         break;
-      case PaymentStatus.OVERDUE:
+      case PaymentStatus.overdue:
         icon = Icons.error;
         color = Colors.red;
         break;
-      case PaymentStatus.PENDING:
+      case PaymentStatus.pending:
         icon = Icons.schedule;
         color = Colors.orange;
         break;

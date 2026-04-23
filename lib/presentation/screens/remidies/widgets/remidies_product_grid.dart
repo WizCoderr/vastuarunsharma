@@ -1,8 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vastuarunsharma/data/models/remidies/product.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/cart_providers.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/remidies_providers.dart';
+import 'package:vastuarunsharma/presentation/screens/remidies/product_detail_screen.dart';
 
 class RemidiesProductGrid extends ConsumerWidget {
   const RemidiesProductGrid({super.key});
@@ -11,11 +13,11 @@ class RemidiesProductGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedCategoryId = ref.watch(selectedCategoryIdProvider);
     final productsAsync = ref.watch(
-      productsProvider.call({
-        'page': 1,
-        'limit': 20,
-        'categoryId': selectedCategoryId,
-      }),
+      productsProvider((
+        page: 1,
+        limit: 20,
+        categoryId: selectedCategoryId,
+      )),
     );
     return productsAsync.when(
       data: (result) {
@@ -53,9 +55,15 @@ class RemidiesProductGrid extends ConsumerWidget {
               const Padding(
                 padding: EdgeInsets.all(24.0),
                 child: Center(
-                  child: Text(
-                    'Products will be added soon',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  child: Column(
+                    children: [
+                      Icon(Icons.inbox_outlined, size: 48, color: Colors.grey),
+                      SizedBox(height: 12),
+                      Text(
+                        'No items available',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    ],
                   ),
                 ),
               )
@@ -79,9 +87,14 @@ class RemidiesProductGrid extends ConsumerWidget {
         padding: EdgeInsets.all(16.0),
         child: CircularProgressIndicator(),
       ),
-      error: (error, stackTrace) => Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Text('Error loading products: $error'),
+      error: (error, stackTrace) => const Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Center(
+          child: Text(
+            'Something went wrong. Please try again.',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ),
       ),
     );
   }
@@ -96,7 +109,11 @@ class RemidiesProductCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
       onTap: () {
-        // Navigate to product detail screen
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ProductDetailScreen(productId: product.id),
+          ),
+        );
       },
       child: Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -110,19 +127,21 @@ class RemidiesProductCard extends ConsumerWidget {
                     topLeft: Radius.circular(12),
                     topRight: Radius.circular(12),
                   ),
-                  child: Image.network(
-                    product.image ?? '',
+                  child: CachedNetworkImage(
+                    imageUrl: product.image ?? '',
                     fit: BoxFit.cover,
                     height: 150,
                     width: double.infinity,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Image.asset(
-                        'assets/images/slide1.png',
-                        height: 150,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      );
-                    },
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey[200],
+                      height: 150,
+                    ),
+                    errorWidget: (context, url, error) => Image.asset(
+                      'assets/images/slide1.png',
+                      height: 150,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
                 Positioned(

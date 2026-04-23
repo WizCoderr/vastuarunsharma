@@ -108,7 +108,6 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
       await _notificationService.syncToken();
     } catch (e, st) {
       state = AsyncValue.error(e, st);
-      rethrow;
     }
   }
 

@@ -15,19 +15,21 @@ final checkoutFormProvider = StateProvider<CheckoutFormData>((ref) {
   );
 });
 
-// Create order provider
-final createOrderProvider = FutureProvider.family<Order, CheckoutFormData>((
+// Create order via new checkout endpoint — returns raw map with price breakdown
+final createOrderProvider =
+    FutureProvider.family<Map<String, dynamic>, CheckoutFormData>((
   ref,
   formData,
 ) async {
   final repository = ref.watch(remidiesRepositoryProvider);
-  return repository.createOrder(
+  return repository.checkout(
     fullName: formData.fullName,
     phoneNumber: formData.phoneNumber,
     address: formData.address,
     city: formData.city,
     state: formData.state,
     postalCode: formData.postalCode,
+    couponCode: formData.couponCode,
   );
 });
 
@@ -45,6 +47,7 @@ class CheckoutFormData {
   final String city;
   final String state;
   final String postalCode;
+  final String? couponCode;
 
   CheckoutFormData({
     required this.fullName,
@@ -53,6 +56,7 @@ class CheckoutFormData {
     required this.city,
     required this.state,
     required this.postalCode,
+    this.couponCode,
   });
 
   CheckoutFormData copyWith({
@@ -62,6 +66,7 @@ class CheckoutFormData {
     String? city,
     String? state,
     String? postalCode,
+    String? couponCode,
   }) {
     return CheckoutFormData(
       fullName: fullName ?? this.fullName,
@@ -70,6 +75,7 @@ class CheckoutFormData {
       city: city ?? this.city,
       state: state ?? this.state,
       postalCode: postalCode ?? this.postalCode,
+      couponCode: couponCode ?? this.couponCode,
     );
   }
 

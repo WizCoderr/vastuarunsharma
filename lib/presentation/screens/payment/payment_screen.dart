@@ -3,14 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../../core/constants/route_constants.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/course_provider.dart';
 import '../../providers/payment_provider.dart';
 import '../../providers/refresh_provider.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   final String courseId;
-  final String? paymentId;
-  const CheckoutScreen({super.key, required this.courseId, this.paymentId});
+  const CheckoutScreen({super.key, required this.courseId});
 
   @override
   ConsumerState<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -68,10 +68,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             razorpayPaymentId: paymentId,
             razorpaySignature: signature,
             courseId: widget.courseId,
-            paymentId: widget.paymentId,
           );
 
-      if (success && mounted) {
+      if (success != null && mounted) {
         // Refresh course providers to update enrollment status
         ref.refreshAfterEnrollment();
         ref.refreshCourseDetails(widget.courseId);
@@ -110,14 +109,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Future<void> _startPayment(double amount) async {
     try {
       // Check for free course
-      if (amount <= 0 && widget.paymentId == null) {
+      if (amount <= 0) {
         await _handleFreeEnrollment();
         return;
       }
 
       final orderData = await ref
           .read(paymentControllerProvider.notifier)
-          .createOrder(widget.courseId, paymentId: widget.paymentId);
+          .createOrder(widget.courseId);
 
       if (orderData != null) {
         _currentOrderId = orderData['id'];
@@ -127,20 +126,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         // If the returned value is close to 'amount' (Rupees) vs 'amount * 100' (Paise),
         // we multiply by 100.
         var paymentAmount = orderData['amount'];
-        if (paymentAmount is int && paymentAmount < (amount * 50)) {
-             paymentAmount = paymentAmount * 100;
+        if (paymentAmount is num && paymentAmount < (amount * 50)) {
+          paymentAmount = (paymentAmount * 100).round();
         }
 
+        final user = ref.read(authStateProvider).value;
         var options = {
           'key': orderData['key'],
           'amount': paymentAmount,
           'name': 'Vastu Arun Sharma',
           'description': orderData['description'],
           'order_id': orderData['id'],
-          'timeout': 120, // in seconds
+          'timeout': 120,
           'prefill': {
-            'contact': '9876543210', // Should come from user profile
-            'email': 'user@example.com', // Should come from user profile
+            'contact': user?.mobileNumber ?? '',
+            'email': user?.email ?? '',
           },
         };
         _razorpay.open(options);
@@ -163,9 +163,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         ref.refreshAfterEnrollment();
         ref.refreshCourseDetails(widget.courseId);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Enrollment Successful!")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Enrollment Successful!")));
         context.go(RouteConstants.enrollmentPath(widget.courseId));
       }
     } catch (e) {
@@ -181,6 +181,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Widget build(BuildContext context) {
     final courseAsync = ref.watch(courseDetailsProvider(widget.courseId));
     final paymentState = ref.watch(paymentControllerProvider);
+
+    final course = courseAsync.value;
+    final activePlan = course?.activePaymentPlan;
+    final displayPrice = activePlan?.amount ?? course?.price ?? 0.0;
 
     return Scaffold(
       backgroundColor: Colors.grey[50], // Consistent bg
@@ -226,13 +230,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                               fontSize: 18,
                             ),
                           ),
-                          if (widget.paymentId != null)
+                          if (activePlan != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 4),
                               child: Text(
-                                "Installment Payment",
+                                activePlan.stageName,
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.primary,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.secondary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -244,7 +250,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            "₹${course.price.toStringAsFixed(0)}",
+                            "₹${displayPrice.toStringAsFixed(0)}",
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 20,
@@ -308,7 +314,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 onPressed: paymentState.isLoading
                     ? null
                     : () {
-                        _startPayment(courseAsync.value!.price);
+                        _startPayment(displayPrice);
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.primary,
@@ -326,9 +332,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                           strokeWidth: 2,
                         ),
                       )
-                    : const Text(
-                        "Pay Now",
-                        style: TextStyle(
+                    : Text(
+                        displayPrice <= 0 ? "Enroll Now" : "Pay Now",
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,

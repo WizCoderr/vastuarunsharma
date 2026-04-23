@@ -15,6 +15,7 @@ class CourseRepository {
         published: true,
         instructorId: '6951a43ae20339f19833f2b1',
         mediaType: 'image',
+        isEnrolled: false,
         sections: [
           Section(
             id: '6953276330fae621f9efbe29',

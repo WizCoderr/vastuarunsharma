@@ -154,6 +154,55 @@ class SectionResponse {
   };
 }
 
+class PaymentPlanResponse {
+  final String? id;
+  final String stageName;
+  final double amount;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final int dueAfterDays; // 0 = Admission Fee, >0 = Installment
+  final int orderIndex;
+  final String? description;
+
+  PaymentPlanResponse({
+    this.id,
+    required this.stageName,
+    required this.amount,
+    this.startDate,
+    this.endDate,
+    required this.dueAfterDays,
+    required this.orderIndex,
+    this.description,
+  });
+
+  factory PaymentPlanResponse.fromJson(Map<String, dynamic> json) =>
+      PaymentPlanResponse(
+        id: json['id'] as String?,
+        stageName: (json['stageName'] ?? json['name'] ?? '') as String,
+        amount: (json['amount'] ?? json['fee'] ?? 0.0).toDouble(),
+        startDate: json['startDate'] != null
+            ? DateTime.tryParse(json['startDate'])
+            : null,
+        endDate: json['endDate'] != null
+            ? DateTime.tryParse(json['endDate'])
+            : null,
+        dueAfterDays: (json['dueAfterDays'] ?? json['dueDays'] ?? 0) as int,
+        orderIndex: (json['orderIndex'] ?? 0) as int,
+        description: json['description'] as String?,
+      );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'stageName': stageName,
+    'amount': amount,
+    'startDate': startDate?.toIso8601String(),
+    'endDate': endDate?.toIso8601String(),
+    'dueAfterDays': dueAfterDays,
+    'orderIndex': orderIndex,
+    'description': description,
+  };
+}
+
 class CourseResponse {
   final String id;
   final String title;
@@ -165,10 +214,13 @@ class CourseResponse {
   final String? s3Key;
   final String? s3Bucket;
   final String? mediaType;
-  final bool? enrolled; // Only present in course details response
+  final bool isEnrolled;
+  final String? serialNumber;
   final List<SectionResponse> sections;
   final List<ResourceResponse> resources;
   final List<LiveClassResponse> liveClasses;
+  final PaymentPlanResponse? activePaymentPlan;
+  final List<PaymentPlanResponse> paymentPlans;
 
   CourseResponse({
     required this.id,
@@ -181,10 +233,13 @@ class CourseResponse {
     this.s3Key,
     this.s3Bucket,
     this.mediaType,
-    this.enrolled,
+    required this.isEnrolled,
+    this.serialNumber,
     required this.sections,
     required this.resources,
     required this.liveClasses,
+    this.activePaymentPlan,
+    this.paymentPlans = const [],
   });
 
   factory CourseResponse.fromJson(Map<String, dynamic> json) => CourseResponse(
@@ -198,7 +253,8 @@ class CourseResponse {
     s3Key: json['s3Key'] as String?,
     s3Bucket: json['s3Bucket'] as String?,
     mediaType: json['mediaType'] as String?,
-    enrolled: (json['enrolled'] ?? json['isEnrolled']) as bool?,
+    isEnrolled: (json['isEnrolled'] ?? json['enrolled'] ?? false) as bool,
+    serialNumber: json['serialNumber'] as String?,
     sections:
         (json['sections'] as List<dynamic>?)
             ?.map((e) => SectionResponse.fromJson(e as Map<String, dynamic>))
@@ -214,6 +270,16 @@ class CourseResponse {
             ?.map((e) => LiveClassResponse.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [],
+    activePaymentPlan: json['activePaymentPlan'] != null
+        ? PaymentPlanResponse.fromJson(
+            json['activePaymentPlan'] as Map<String, dynamic>)
+        : null,
+    paymentPlans: (json['paymentPlans'] as List<dynamic>?)
+            ?.map(
+              (e) => PaymentPlanResponse.fromJson(e as Map<String, dynamic>),
+            )
+            .toList() ??
+        [],
   );
 
   Map<String, dynamic> toJson() => {
@@ -227,9 +293,12 @@ class CourseResponse {
     if (s3Key != null) 's3Key': s3Key,
     if (s3Bucket != null) 's3Bucket': s3Bucket,
     if (mediaType != null) 'mediaType': mediaType,
-    if (enrolled != null) 'enrolled': enrolled,
+    'isEnrolled': isEnrolled,
+    if (serialNumber != null) 'serialNumber': serialNumber,
     'sections': sections.map((e) => e.toJson()).toList(),
     'resources': resources.map((e) => e.toJson()).toList(),
     'liveClasses': liveClasses.map((e) => e.toJson()).toList(),
+    'activePaymentPlan': activePaymentPlan?.toJson(),
+    'paymentPlans': paymentPlans.map((e) => e.toJson()).toList(),
   };
 }

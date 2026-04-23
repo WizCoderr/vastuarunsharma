@@ -38,7 +38,26 @@ class RemidiesCategoryFilters extends ConsumerWidget {
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ],
+        ),
         error: (error, stackTrace) {
           return ListView(
             scrollDirection: Axis.horizontal,
@@ -51,12 +70,30 @@ class RemidiesCategoryFilters extends ConsumerWidget {
                   ref.read(selectedCategoryIdProvider.notifier).state = null;
                 },
               ),
-              Container(
-                alignment: Alignment.centerLeft,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: const Text(
-                  'Categories will be added soon',
-                  style: TextStyle(color: Colors.grey),
+              GestureDetector(
+                onTap: () {
+                  ref.invalidate(categoriesProvider);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade100,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.red.shade300),
+                  ),
+                  child: Text(
+                    'Retry',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.red.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
             ],

@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:vastuarunsharma/core/constants/route_constants.dart';
+import 'package:vastuarunsharma/data/models/remidies/coupon.dart';
+import 'package:vastuarunsharma/domain/providers/remidies/cart_providers.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/order_providers.dart';
+import 'package:vastuarunsharma/domain/providers/remidies/remidies_providers.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
@@ -10,61 +15,152 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 }
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
-  late TextEditingController fullNameController;
-  late TextEditingController phoneNumberController;
-  late TextEditingController addressController;
-  late TextEditingController cityController;
-  late TextEditingController stateController;
-  late TextEditingController postalCodeController;
+  final _fullNameController = TextEditingController();
+  final _phoneNumberController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _stateController = TextEditingController();
+  final _postalCodeController = TextEditingController();
+  final _couponController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    fullNameController = TextEditingController();
-    phoneNumberController = TextEditingController();
-    addressController = TextEditingController();
-    cityController = TextEditingController();
-    stateController = TextEditingController();
-    postalCodeController = TextEditingController();
-  }
+  bool _isValidatingCoupon = false;
+  bool _isPlacingOrder = false;
+  String? _couponError;
+  String? _couponSuccess;
+  double _couponDiscountValue = 0;
+  DiscountType? _couponDiscountType;
+  String? _appliedCouponCode;
 
   @override
   void dispose() {
-    fullNameController.dispose();
-    phoneNumberController.dispose();
-    addressController.dispose();
-    cityController.dispose();
-    stateController.dispose();
-    postalCodeController.dispose();
+    _fullNameController.dispose();
+    _phoneNumberController.dispose();
+    _addressController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
+    _postalCodeController.dispose();
+    _couponController.dispose();
     super.dispose();
   }
 
-  void _placeOrder() {
+  Future<void> _applyCoupon() async {
+    final code = _couponController.text.trim();
+    if (code.isEmpty) return;
+
+    setState(() {
+      _isValidatingCoupon = true;
+      _couponError = null;
+      _couponSuccess = null;
+    });
+
+    try {
+      final result = await ref
+          .read(remidiesRepositoryProvider)
+          .validateCoupon(code);
+
+      final discountType = result['discountType'] == 'FIXED'
+          ? DiscountType.FIXED
+          : DiscountType.PERCENTAGE;
+      final discountValue = _parseDouble(result['discountValue']);
+
+      setState(() {
+        _appliedCouponCode = code;
+        _couponDiscountType = discountType;
+        _couponDiscountValue = discountValue;
+        _couponSuccess = result['message']?.toString() ??
+            'Coupon applied successfully!';
+        _couponError = null;
+      });
+    } catch (e) {
+      setState(() {
+        _appliedCouponCode = null;
+        _couponDiscountType = null;
+        _couponDiscountValue = 0;
+        _couponError = e.toString().replaceFirst('Exception: ', '');
+        _couponSuccess = null;
+      });
+    } finally {
+      setState(() => _isValidatingCoupon = false);
+    }
+  }
+
+  void _removeCoupon() {
+    setState(() {
+      _appliedCouponCode = null;
+      _couponDiscountType = null;
+      _couponDiscountValue = 0;
+      _couponError = null;
+      _couponSuccess = null;
+      _couponController.clear();
+    });
+  }
+
+  Future<void> _placeOrder() async {
     final formData = CheckoutFormData(
-      fullName: fullNameController.text,
-      phoneNumber: phoneNumberController.text,
-      address: addressController.text,
-      city: cityController.text,
-      state: stateController.text,
-      postalCode: postalCodeController.text,
+      fullName: _fullNameController.text.trim(),
+      phoneNumber: _phoneNumberController.text.trim(),
+      address: _addressController.text.trim(),
+      city: _cityController.text.trim(),
+      state: _stateController.text.trim(),
+      postalCode: _postalCodeController.text.trim(),
+      couponCode: _appliedCouponCode,
     );
 
     if (!formData.isValid) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields')),
+      );
       return;
     }
 
-    ref.read(createOrderProvider.call(formData));
+    setState(() => _isPlacingOrder = true);
+
+    try {
+      final result = await ref
+          .read(remidiesRepositoryProvider)
+          .checkout(
+            fullName: formData.fullName,
+            phoneNumber: formData.phoneNumber,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            postalCode: formData.postalCode,
+            couponCode: formData.couponCode,
+          );
+
+      // Extract order id from response
+      final orderId = (result['_id'] ?? result['id'] ?? result['orderId'] ?? '')
+          .toString();
+
+      if (!mounted) return;
+      ref.invalidate(cartProvider);
+      context.push(RouteConstants.remediesPaymentPath, extra: orderId);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isPlacingOrder = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: const BackButton(),
-        title: const Text('Checkout'),
+        backgroundColor: const Color(0xFFD7A417),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        leading: const BackButton(color: Colors.white),
+        title: const Text(
+          'Checkout',
+          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+        ),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -74,56 +170,204 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             children: [
               Text(
                 'Shipping Details',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-              _buildTextField('Full Name', fullNameController),
+              _buildTextField('Full Name', _fullNameController),
               const SizedBox(height: 12),
               _buildTextField(
                 'Phone Number',
-                phoneNumberController,
+                _phoneNumberController,
                 keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: 12),
-              _buildTextField('Address', addressController, maxLines: 3),
+              _buildTextField('Address', _addressController),
               const SizedBox(height: 12),
-              _buildTextField('City', cityController),
+              _buildTextField('City', _cityController),
               const SizedBox(height: 12),
-              _buildTextField('State', stateController),
-              const SizedBox(height: 12),
-              _buildTextField('Postal Code', postalCodeController),
-              const SizedBox(height: 24),
-              _OrderSummaryCard(),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTextField('State', _stateController),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildTextField(
+                      'Postal Code',
+                      _postalCodeController,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _buildCouponSection(),
+              const SizedBox(height: 20),
+              _PriceBreakdownCard(
+                appliedCouponCode: _appliedCouponCode,
+                couponDiscountType: _couponDiscountType,
+                couponDiscountValue: _couponDiscountValue,
+              ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
       ),
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
-        color: Colors.white,
-        child: Consumer(
-          builder: (context, ref, child) {
-            return ElevatedButton(
-              onPressed: _placeOrder,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amber,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          12,
+          16,
+          12 + MediaQuery.of(context).padding.bottom,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(
+              color: const Color(0xFFD3C5AE).withValues(alpha: 0.3),
+            ),
+          ),
+        ),
+        child: GestureDetector(
+          onTap: _isPlacingOrder ? null : _placeOrder,
+          child: Container(
+            height: 52,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: _isPlacingOrder
+                    ? [Colors.grey.shade400, Colors.grey.shade500]
+                    : [const Color(0xFFD7A417), const Color(0xFFB3860B)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Place Order'),
-                  SizedBox(width: 8),
-                  Icon(Icons.arrow_forward),
-                ],
-              ),
-            );
-          },
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFD7A417).withValues(alpha: 0.25),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: _isPlacingOrder
+                ? const SizedBox(
+                    height: 22,
+                    width: 22,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Place Order',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Icon(Icons.arrow_forward, color: Colors.white, size: 18),
+                    ],
+                  ),
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCouponSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Coupon Code',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF1A1C19),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _buildTextField(
+                'Enter Coupon Code',
+                _couponController,
+                enabled: _appliedCouponCode == null,
+              ),
+            ),
+            const SizedBox(width: 8),
+            _appliedCouponCode != null
+                ? IconButton(
+                    onPressed: _removeCoupon,
+                    icon: const Icon(Icons.close, color: Colors.red),
+                    tooltip: 'Remove coupon',
+                  )
+                : TextButton(
+                    onPressed: _isValidatingCoupon ? null : _applyCoupon,
+                    child: _isValidatingCoupon
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFFD7A417),
+                            ),
+                          )
+                        : const Text(
+                            'Apply',
+                            style: TextStyle(
+                              color: Color(0xFFD7A417),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                  ),
+          ],
+        ),
+        if (_couponSuccess != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.green, size: 14),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    _couponSuccess!,
+                    style: const TextStyle(color: Colors.green, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (_couponError != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 14),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    _couponError!,
+                    style: const TextStyle(color: Colors.red, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
@@ -132,11 +376,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     TextEditingController controller, {
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
+    bool enabled = true,
   }) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
+      enabled: enabled,
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -144,18 +390,59 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Colors.amber),
         ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        filled: !enabled,
+        fillColor: enabled ? null : Colors.grey.shade100,
       ),
     );
   }
+
+  static double _parseDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
 }
 
-class _OrderSummaryCard extends StatelessWidget {
+class _PriceBreakdownCard extends ConsumerWidget {
+  final String? appliedCouponCode;
+  final DiscountType? couponDiscountType;
+  final double couponDiscountValue;
+
+  const _PriceBreakdownCard({
+    required this.appliedCouponCode,
+    required this.couponDiscountType,
+    required this.couponDiscountValue,
+  });
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cartAsync = ref.watch(cartProvider);
+    final subtotal = cartAsync.when(
+      data: (cart) => cart.subtotal,
+      loading: () => 0.0,
+      error: (_, _) => 0.0,
+    );
+
+    double couponDiscount = 0;
+    if (appliedCouponCode != null && couponDiscountType != null) {
+      if (couponDiscountType == DiscountType.PERCENTAGE) {
+        couponDiscount = subtotal * (couponDiscountValue / 100);
+      } else {
+        couponDiscount = couponDiscountValue;
+      }
+      couponDiscount = couponDiscount.clamp(0, subtotal);
+    }
+
+    final total = (subtotal - couponDiscount).clamp(0.0, double.infinity);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: const Color(0xFFF4F4EF),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -163,43 +450,75 @@ class _OrderSummaryCard extends StatelessWidget {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Order Summary'),
-              GestureDetector(
-                onTap: () {},
-                child: const Icon(Icons.expand_more),
+            children: const [
+              Text(
+                'Order Summary',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
               ),
+              Icon(Icons.keyboard_arrow_down, color: Color(0xFF4F4634)),
             ],
           ),
           const SizedBox(height: 12),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [Text('Subtotal'), Text('₹1,299')],
-          ),
+          _SummaryRow('Subtotal', '₹${_fmt(subtotal)}'),
           const SizedBox(height: 8),
-          const Row(
+          const _SummaryRow('Shipping', 'Free', valueColor: Colors.green),
+          if (couponDiscount > 0) ...[
+            const SizedBox(height: 8),
+            _SummaryRow(
+              'Coupon Discount',
+              '-₹${_fmt(couponDiscount)}',
+              valueColor: Colors.green,
+            ),
+          ],
+          const Divider(height: 20),
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Shipping'),
-              Text('Free', style: TextStyle(color: Colors.green)),
-            ],
-          ),
-          const Divider(height: 16),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Total', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Total Payable',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               Text(
-                '₹1,299',
-                style: TextStyle(
+                '₹${_fmt(total)}',
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Colors.amber,
+                  color: Color(0xFFD7A417),
+                  fontSize: 16,
                 ),
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  static String _fmt(double price) {
+    final rupees = price.toInt();
+    final str = rupees.toString();
+    if (str.length <= 3) return str;
+    return '${str.substring(0, str.length - 3)},${str.substring(str.length - 3)}';
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _SummaryRow(this.label, this.value, {this.valueColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label),
+        Text(
+          value,
+          style: valueColor != null ? TextStyle(color: valueColor) : null,
+        ),
+      ],
     );
   }
 }

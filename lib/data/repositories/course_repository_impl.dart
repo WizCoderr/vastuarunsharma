@@ -1,4 +1,3 @@
-
 import 'package:vastuarunsharma/shared/utils/either.dart';
 
 import '../../domain/entities/course.dart' as entity;
@@ -75,7 +74,7 @@ class CourseRepositoryImpl implements CourseRepository {
     published: r.published,
     instructorId: r.instructorId,
     mediaType: r.mediaType ?? 'image',
-    enrolled: r.enrolled,
+    isEnrolled: r.isEnrolled,
     sections: r.sections.map((s) => _mapSection(s)).toList(),
     resources: r.resources.map((res) => _mapResource(res)).toList(),
     liveClasses: r.liveClasses.map((l) => _mapLiveClass(l)).toList(),

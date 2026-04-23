@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 
 import '../../models/response/api_response.dart';
 import '../../models/response/order_response.dart';
-import '../../models/course_model.dart';
 import '../../models/response/student_payment_model.dart';
 import '../../../core/api/dio_client.dart';
 import '../../../core/api/api_endpoints.dart';
@@ -120,37 +119,6 @@ class PaymentRemoteDataSource {
     throw Exception(errMsg);
   }
 
-  Future<List<PaymentPlanModel>> getPaymentPlan(String courseId) async {
-    try {
-      final resp = await client.get(ApiEndpoints.coursePaymentPlan(courseId));
-      final api = ApiResponse<List<dynamic>>.fromJson(
-        resp.data as Map<String, dynamic>,
-        (j) => j as List<dynamic>,
-      );
-
-      if (api.success) {
-        return api.data
-                ?.map((e) => PaymentPlanModel.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            [];
-      }
-      throw Exception(api.message ?? 'Failed to fetch payment plan');
-    } catch (e) {
-      debugPrint('GetPaymentPlan error: $e');
-      rethrow;
-    }
-  }
-
-  Future<OrderResponse> enrollInCourse(String courseId) async {
-    try {
-      final resp = await client.post(ApiEndpoints.enrollInCourse(courseId));
-      return _parseOrderResponse(resp.data, resp);
-    } catch (e) {
-      debugPrint('EnrollInCourse error: $e');
-      rethrow;
-    }
-  }
-
   Future<List<StudentPaymentModel>> getStudentCoursePayments(
     String courseId,
   ) async {
@@ -176,31 +144,20 @@ class PaymentRemoteDataSource {
     }
   }
 
-  Future<OrderResponse> payInstallment(String paymentId) async {
-    try {
-      final resp = await client.post(ApiEndpoints.payInstallment(paymentId));
-      return _parseOrderResponse(resp.data, resp);
-    } catch (e) {
-      debugPrint('PayInstallment error: $e');
-      rethrow;
-    }
-  }
-
-  Future<bool> verifyPayment(
+  Future<String?> verifyPayment(
     String razorpayOrderId,
     String razorpayPaymentId,
     String razorpaySignature, {
-    String? courseId,
-    String? paymentId,
+    required String courseId,
   }) async {
     try {
       // Validate exact required params
       if (razorpayOrderId.trim().isEmpty ||
           razorpayPaymentId.trim().isEmpty ||
           razorpaySignature.trim().isEmpty ||
-          (courseId == null && paymentId == null)) {
+          courseId.trim().isEmpty) {
         debugPrint(
-          'VerifyPayment: missing required fields -> order:$razorpayOrderId payment:$razorpayPaymentId signature:$razorpaySignature course:$courseId paymentId:$paymentId',
+          'VerifyPayment: missing required fields -> order:$razorpayOrderId payment:$razorpayPaymentId signature:$razorpaySignature course:$courseId',
         );
         throw Exception('Incomplete payment details');
       }
@@ -209,8 +166,7 @@ class PaymentRemoteDataSource {
         'razorpay_order_id': razorpayOrderId,
         'razorpay_payment_id': razorpayPaymentId,
         'razorpay_signature': razorpaySignature,
-        'courseId': ?courseId,
-        'paymentId': ?paymentId,
+        'courseId': courseId,
       };
 
       debugPrint('VerifyPayment payload: $payload');
@@ -227,7 +183,11 @@ class PaymentRemoteDataSource {
       );
 
       if (api.success) {
-        return true;
+        // Response data might contain serialNumber directly or inside a map
+        if (api.data is Map<String, dynamic>) {
+          return api.data['serialNumber'] as String?;
+        }
+        return api.data?.toString();
       }
 
       final errMsg = api.message ?? 'Payment verification failed: ${resp.data}';

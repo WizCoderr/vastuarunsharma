@@ -33,7 +33,7 @@ class InstructorCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            "Arun Sharma is a seasoned Vastu consultant with over 5+ years of experience in the field. He has helped numerous clients create harmonious living and working spaces by applying the principles of Vastu Shastra. Arun's expertise lies in analyzing the energy flow of spaces and providing practical solutions to enhance well-being and prosperity.",
+            "Arun Sharma is a seasoned Vastu consultant with over 6+ years of experience in the field. He has helped numerous clients create harmonious living and working spaces by applying the principles of Vastu Shastra. Arun's expertise lies in analyzing the energy flow of spaces and providing practical solutions to enhance well-being and prosperity.",
             style: const TextStyle(
               fontSize: 15,
               color: DashboardColors.textSecondary,

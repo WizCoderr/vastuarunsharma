@@ -126,7 +126,7 @@ class EnrolledCoursesPollingManager extends Notifier<bool> {
       // Check if title, sections count, or lectures count changed
       if (oldCourse.title != newCourse.title ||
           oldCourse.sections.length != newCourse.sections.length ||
-          oldCourse.enrolled != newCourse.enrolled) {
+          oldCourse.isEnrolled != newCourse.isEnrolled) {
         return true;
       }
 

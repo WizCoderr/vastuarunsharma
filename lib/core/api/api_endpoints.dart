@@ -1,8 +1,12 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class ApiEndpoints {
-  static const String baseUrl = "https://api.vastuarunsharma.com";
+  static String get baseUrl => dotenv.env['BASE_URL']!;
   // Auth
   static const String login = '/auth/login';
   static const String register = '/auth/register';
+  static const String forgotPassword = '/auth/forgot-password';
+  static const String resetPassword = '/auth/reset-password';
   static const String logout = '/api/student/logout';
   static const String profile = '/api/student/profile';
   //Public API
@@ -34,25 +38,33 @@ class ApiEndpoints {
       '/api/student/lectures/$lectureId/stream-url';
 
   // Payments
-  static String coursePaymentPlan(String courseId) =>
-      '/api/payments/course/$courseId/plan';
   static const String courseOrder = '/api/payments/course/order';
   static const String courseVerify = '/api/payments/course/verify';
   static String studentCoursePayments(String courseId) =>
       '/api/payments/course/$courseId/my-payments';
-  static String payInstallment(String paymentId) =>
-      '/api/payments/course/installment/$paymentId/pay';
-  static String enrollInCourse(String courseId) =>
-      '/api/payments/course/$courseId/enroll';
   static const String remediesOrder = '/api/payments/remidies/order';
   static const String remediesVerify = '/api/payments/remidies/verify';
   static const String freeEnroll = '/api/payments/free-enroll';
 
   // Remidies (Vastu Store)
   static const String remidiesCategories = '/api/student/remidies/categories';
-  static const String remidiesProducts = '/api/student/remidies/products';
+  static const String remidiesProducts = '/api/student/remidies/products/all';
   static const String remidiesCart = '/api/student/remidies/cart';
   static const String remidiesOrders = '/api/student/remidies/orders';
   static String remidiesCartItem(String productId) =>
       '/api/student/remidies/cart/$productId';
+
+  // Remidies Coupons & Checkout (Student)
+  static const String remidiesCoupons = '/api/student/remidies/coupons';
+  static const String remidiesValidateCoupon =
+      '/api/student/remidies/coupons/validate';
+  static const String remidiesCheckout = '/api/student/remidies/checkout';
+
+  // Admin Remidies
+  static const String adminRemidiesCoupons = '/api/admin/remidies/coupons';
+  static String adminRemidiesCoupon(String id) =>
+      '/api/admin/remidies/coupons/$id';
+  static const String adminRemidiesBulkTiers = '/api/admin/remidies/bulk-tiers';
+  static String adminRemidiesBulkTier(String id) =>
+      '/api/admin/remidies/bulk-tiers/$id';
 }

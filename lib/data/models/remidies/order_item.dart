@@ -1,6 +1,10 @@
 import 'package:vastuarunsharma/data/models/remidies/product.dart';
 
-enum OrderStatus { PENDING, PAID, SHIPPED, DELIVERED, CANCELLED }
+enum OrderStatus { pending, processing, shipped, delivered, cancelled }
+
+extension OrderStatusWire on OrderStatus {
+  String get wireName => name.toUpperCase();
+}
 
 class OrderItem {
   final String id;

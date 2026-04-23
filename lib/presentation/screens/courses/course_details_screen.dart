@@ -14,6 +14,7 @@ import '../../providers/payment_provider.dart';
 import '../../providers/refresh_provider.dart';
 import '../../widgets/glass_button.dart';
 import '../../widgets/glass_container.dart';
+import '../../../data/models/response/student_payment_model.dart';
 
 class CourseDetailsScreen extends ConsumerWidget {
   final String courseId;
@@ -25,6 +26,9 @@ class CourseDetailsScreen extends ConsumerWidget {
     final courseAsync = ref.watch(courseDetailsProvider(courseId));
     final upcomingClassesAsync = ref.watch(upcomingLiveClassesProvider);
     final recordingsAsync = ref.watch(courseRecordingsProvider(courseId));
+    final installmentsAsync = ref.watch(
+      studentCoursePaymentsProvider(courseId),
+    );
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -53,6 +57,7 @@ class CourseDetailsScreen extends ConsumerWidget {
               ref.refresh(courseDetailsProvider(courseId).future),
               ref.refresh(upcomingLiveClassesProvider.future),
               ref.refresh(courseRecordingsProvider(courseId).future),
+              ref.refresh(studentCoursePaymentsProvider(courseId).future),
             ]);
           },
           child: SingleChildScrollView(
@@ -91,6 +96,14 @@ class CourseDetailsScreen extends ConsumerWidget {
                           ),
                         ),
                 ),
+                // Identity Display (Post-Enrollment)
+                if (course.isEnrolled && course.serialNumber != null)
+                  _serialNumberCard(course.serialNumber!, context),
+
+                // Active Offer Banner
+                if (!course.isEnrolled && course.activePaymentPlan != null)
+                  _activeOfferBanner(course.activePaymentPlan!, context),
+
                 // Course Title
                 Text(
                   course.title,
@@ -165,13 +178,17 @@ class CourseDetailsScreen extends ConsumerWidget {
                     ),
                     _infoTile(
                       Icons.verified,
-                      course.enrolled == true ? "Enrolled" : "Available",
+                      course.isEnrolled ? "Enrolled" : "Available",
                       "Status",
                       context,
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
+
+                // Payment Tiers & Installments Section
+                if (!course.isEnrolled && course.paymentPlans.isNotEmpty)
+                  _paymentPlansSection(course.paymentPlans),
 
                 // Upcoming Live Classes Section
                 upcomingClassesAsync.when(
@@ -202,6 +219,14 @@ class CourseDetailsScreen extends ConsumerWidget {
                   loading: () => const SizedBox.shrink(),
                   error: (error, stack) => const SizedBox.shrink(),
                 ),
+
+                // Installment Tracking Section
+                if (course.isEnrolled)
+                  installmentsAsync.when(
+                    data: (payments) => _installmentsSection(payments),
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, _) => const SizedBox.shrink(),
+                  ),
 
                 // Recordings Section
                 recordingsAsync.when(
@@ -274,11 +299,8 @@ class CourseDetailsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 14),
                   ...course.resources.map(
-                    (resource) => _resourceTile(
-                      context,
-                      resource,
-                      course.enrolled ?? false,
-                    ),
+                    (resource) =>
+                        _resourceTile(context, resource, course.isEnrolled),
                   ),
                 ],
 
@@ -295,7 +317,7 @@ class CourseDetailsScreen extends ConsumerWidget {
               const Icon(Icons.error_outline, size: 48, color: Colors.red),
               const SizedBox(height: 16),
               Text(
-                'Error: ${error.toString()}',
+                'Something went wrong. Please try again.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.red),
               ),
@@ -310,8 +332,44 @@ class CourseDetailsScreen extends ConsumerWidget {
       ),
       bottomNavigationBar: courseAsync.when(
         data: (course) {
-          final hasStagedPlans = course.paymentPlans.isNotEmpty;
-          final displayPrice = hasStagedPlans ? course.paymentPlans.first.amount : course.price;
+          final isEnrolled = course.isEnrolled;
+          final activePlan = course.activePaymentPlan;
+
+          // Logic for Enrollment Button
+          String buttonText = "Join Now";
+          bool isEnabled = false;
+          double? displayPrice;
+          String? subText;
+
+          if (isEnrolled) {
+            buttonText = "Go to Curriculum";
+            isEnabled = true;
+          } else if (activePlan != null) {
+            buttonText = "Join Now";
+            isEnabled = true;
+            displayPrice = activePlan.amount;
+            subText = activePlan.stageName.toUpperCase();
+          } else {
+            // Check for future plans
+            final now = DateTime.now();
+            final futurePlans =
+                course.paymentPlans
+                    .where(
+                      (p) => p.startDate != null && p.startDate!.isAfter(now),
+                    )
+                    .toList()
+                  ..sort((a, b) => a.startDate!.compareTo(b.startDate!));
+
+            if (futurePlans.isNotEmpty) {
+              buttonText = "Enrollment Closed";
+              isEnabled = false;
+              subText =
+                  "NEXT BATCH: ${_formatDate(futurePlans.first.startDate!)}";
+            } else {
+              buttonText = "Enrollment Opening Soon";
+              isEnabled = false;
+            }
+          }
 
           return GlassContainer(
             padding: const EdgeInsets.all(16),
@@ -319,98 +377,90 @@ class CourseDetailsScreen extends ConsumerWidget {
             opacity: 0.9,
             child: Row(
               children: [
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      hasStagedPlans ? "STAGE 1 FEE" : "COURSE FEE",
-                      style: const TextStyle(fontSize: 12, color: Colors.black54),
-                    ),
-                    Text(
-                      displayPrice == 0
-                          ? "Free"
-                          : "₹${displayPrice.toStringAsFixed(0)}",
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
+                if (!isEnrolled)
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        subText ?? "COURSE FEE",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
                       ),
+                      if (displayPrice != null)
+                        Text(
+                          displayPrice == 0
+                              ? "Free"
+                              : "₹${displayPrice.toStringAsFixed(0)}",
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                    ],
+                  ),
+                if (isEnrolled)
+                  const Text(
+                    "Already Enrolled",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green,
                     ),
-                  ],
-                ),
+                  ),
                 const Spacer(),
                 GlassButton(
-                  width: 170,
+                  width: 180,
                   height: 50,
-                  onPressed: () async {
-                    final authState = ref.read(authStateProvider);
-                    if (authState.value == null) {
-                      _showLoginDialog(context);
-                      return;
-                    }
+                  onPressed: !isEnabled
+                      ? null
+                      : () async {
+                          final authState = ref.read(authStateProvider);
+                          if (authState.value == null) {
+                            _showLoginDialog(context);
+                            return;
+                          }
 
-                    if (course.enrolled == true) {
-                      context.go(RouteConstants.videoPlayerPath(courseId));
-                    } else if (course.price == 0) {
-                      // Free Course Bypass
-                      try {
-                        // Show loading indicator
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Enrolling in free course..."),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
+                          if (isEnrolled) {
+                            context.go(
+                              RouteConstants.videoPlayerPath(courseId),
+                            );
+                          } else if (displayPrice == 0) {
+                            // Free Course Bypass
+                            try {
+                              final success = await ref
+                                  .read(paymentControllerProvider.notifier)
+                                  .freeEnroll(courseId);
 
-                        final success = await ref
-                            .read(paymentControllerProvider.notifier)
-                            .freeEnroll(courseId);
-
-                        if (success && context.mounted) {
-                          ref.refreshAfterEnrollment();
-                          ref.refreshCourseDetails(courseId);
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Enrollment Successful!"),
-                            ),
-                          );
-                          context.go(RouteConstants.enrollmentPath(courseId));
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text("Enrollment Failed: $e"),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      }
-                    } else if (hasStagedPlans) {
-                      // Staged enrollment logic
-                      try {
-                        final orderData = await ref
-                            .read(paymentControllerProvider.notifier)
-                            .enrollInCourse(courseId);
-                        
-                        if (orderData != null && context.mounted) {
-                           context.push(RouteConstants.paymentPath(courseId));
-                        }
-                      } catch (e) {
-                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Failed to initiate installment: $e")),
-                          );
-                        }
-                      }
-                    } else {
-                      context.go(RouteConstants.paymentPath(courseId));
-                    }
-                  },
-                  color: Theme.of(context).colorScheme.primary,
+                              if (success && context.mounted) {
+                                ref.refreshAfterEnrollment();
+                                ref.refreshCourseDetails(courseId);
+                                context.go(
+                                  RouteConstants.enrollmentPath(courseId),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text("Enrollment Failed: $e"),
+                                  ),
+                                );
+                              }
+                            }
+                          } else {
+                            context.push(
+                              RouteConstants.checkoutPath,
+                              extra: courseId,
+                            );
+                          }
+                        },
+                  color: isEnabled
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.grey,
                   child: Text(
-                    course.enrolled == true ? 'Start Learning' : 'Join Now',
+                    buttonText,
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -623,6 +673,293 @@ class CourseDetailsScreen extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _activeOfferBanner(PaymentPlan plan, BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.primary,
+            Theme.of(context).colorScheme.secondary,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.local_offer, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                "Limited Time Offer: ${plan.stageName}".toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          if (plan.endDate != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                "Ends on ${_formatDate(plan.endDate!)}",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _paymentPlansSection(List<PaymentPlan> plans) {
+    // Sort by orderIndex
+    final sortedPlans = List<PaymentPlan>.from(plans)
+      ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        const Text(
+          "Enrollment & Payment Plans",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 10),
+        ...sortedPlans.map((plan) {
+          final isPast =
+              plan.endDate != null && plan.endDate!.isBefore(DateTime.now());
+          final isWindow = plan.isWindow;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isPast
+                  ? Colors.grey.shade50
+                  : (isWindow ? Colors.blue.shade50 : Colors.orange.shade50),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isPast
+                    ? Colors.grey.shade200
+                    : (isWindow
+                          ? Colors.blue.shade100
+                          : Colors.orange.shade100),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        plan.stageName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isPast ? Colors.grey : Colors.black87,
+                        ),
+                      ),
+                      if (plan.startDate != null && plan.endDate != null)
+                        Text(
+                          "${_formatDate(plan.startDate!)} - ${_formatDate(plan.endDate!)}",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isPast ? Colors.grey : Colors.black54,
+                          ),
+                        )
+                      else if (plan.dueAfterDays > 0)
+                        Text(
+                          "Due ${plan.dueAfterDays} days after enrollment",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
+                        )
+                      else if (plan.dueAfterDays == 0 && !isWindow)
+                        const Text(
+                          "One-time Admission Fee",
+                          style: TextStyle(fontSize: 12, color: Colors.black54),
+                        ),
+                      if (plan.description != null &&
+                          plan.description!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            plan.description!,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isPast ? Colors.grey : Colors.black45,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "₹${plan.amount.toStringAsFixed(0)}",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: isPast
+                        ? Colors.grey
+                        : (isWindow
+                              ? Colors.blue.shade700
+                              : Colors.orange.shade700),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _serialNumberCard(String serialNumber, BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            "Registered Student ID".toUpperCase(),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.primary,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            serialNumber,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _installmentsSection(List<StudentPaymentModel> payments) {
+    if (payments.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Payment Status",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
+        ...payments.map((p) {
+          final isPaid = p.status == PaymentStatus.paid;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isPaid ? Colors.green.shade50 : Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isPaid ? Colors.green.shade100 : Colors.blue.shade100,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isPaid ? Icons.check_circle : Icons.schedule,
+                  color: isPaid ? Colors.green : Colors.blue,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        p.title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isPaid
+                              ? Colors.green.shade900
+                              : Colors.blue.shade900,
+                        ),
+                      ),
+                      Text(
+                        isPaid
+                            ? "Paid on ${_formatDate(p.dueDate)}"
+                            : "Upcoming: ${_formatDate(p.dueDate)}",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isPaid
+                              ? Colors.green.shade700
+                              : Colors.blue.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  "₹${p.amount.toStringAsFixed(0)}",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isPaid
+                        ? Colors.green.shade900
+                        : Colors.blue.shade900,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  String _formatDate(DateTime dt) {
+    final localDt = dt.toLocal();
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return "${localDt.day} ${months[localDt.month - 1]} ${localDt.year}";
+  }
 }
 
 class _LiveClassTile extends StatelessWidget {
@@ -701,8 +1038,11 @@ class _RecordingTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
-        // Open Video Player - assuming passing courseId logic
-        context.push(RouteConstants.videoPlayerPath(recording.courseId));
+        // Open Video Player with specific recording ID
+        context.push(RouteConstants.videoPlayerPath(
+          recording.courseId,
+          recordingId: recording.id,
+        ));
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),

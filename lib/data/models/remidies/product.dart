@@ -28,18 +28,25 @@ class Product {
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
+    final categoryId =
+        (json['categoryId'] as String?) ?? (json['category_id'] as String?);
+    final categoryRaw = json['category'];
+    final Category category = categoryRaw is Map<String, dynamic>
+        ? Category.fromJson(categoryRaw)
+        : Category(id: categoryId ?? '', name: '');
+
     return Product(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      categoryId: json['categoryId'] as String,
+      id: (json['id'] ?? json['_id'] ?? '') as String,
+      name: (json['name'] as String?) ?? '',
+      categoryId: categoryId ?? category.id,
       description: json['description'] as String?,
-      image: json['image'] as String?,
-      price: (json['price'] as num).toDouble(),
-      stock: json['stock'] as int? ?? 0,
+      image: _normalizeImageUrl(json['image'] as String?),
+      price: double.tryParse(json['price']?.toString() ?? '') ?? 0.0,
+      stock: int.tryParse(json['stock']?.toString() ?? '') ?? (json['stock'] as num?)?.toInt() ?? 0,
       isActive: json['isActive'] as bool? ?? true,
-      category: Category.fromJson(json['category'] as Map<String, dynamic>),
+      category: category,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-      reviewCount: json['reviewCount'] as int? ?? 0,
+      reviewCount: (json['reviewCount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -60,6 +67,16 @@ class Product {
   }
 
   bool get isOutOfStock => stock == 0;
+
+  static String? _normalizeImageUrl(String? url) {
+    if (url == null || url.isEmpty) return url;
+    const s3Host = 'https://vastu-prod-data.s3.amazonaws.com/';
+    const cdnHost = 'https://d31m2t02kxia5f.cloudfront.net/';
+    if (url.startsWith(s3Host)) {
+      return cdnHost + url.substring(s3Host.length);
+    }
+    return url;
+  }
 
   @override
   String toString() {
