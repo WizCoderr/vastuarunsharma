@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../../../core/constants/route_constants.dart';
 import '../../../core/theme/app_colors.dart';
@@ -39,6 +40,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   LiveClass? _availableLiveClass;
   bool _isLoadingContent = false;
   List<Recording> _courseRecordings = [];
+  WebViewController? _webViewController;
 
   // Store reference to avoid using ref in dispose()
   late final VideoPlayerNotifier _videoPlayerNotifier;
@@ -61,17 +63,18 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     setState(() {
       _currentLecture = lecture;
       _isLoadingContent = true;
-      _availableLiveClass = null; // Reset live class
+      _availableLiveClass = null;
+      _webViewController = null;
     });
 
-    String videoUrl = lecture.videoUrl;
+    final videoUrl = lecture.videoUrl;
+    final provider = lecture.videoProvider.toLowerCase();
 
     if (videoUrl.isEmpty) {
       debugPrint(
         'No video URL found for lecture ${lecture.id}. Checking for live classes...',
       );
       try {
-        // Fetch today's and upcoming live classes
         final todayClasses = await ref.read(todayLiveClassesProvider.future);
         final upcomingClasses = await ref.read(
           upcomingLiveClassesProvider.future,
@@ -82,12 +85,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
           ...upcomingClasses,
         ].where((liveClass) => liveClass.courseId == widget.courseId).toList();
 
-        // Sort by start time: Live now first, then soonest upcoming
         courseLiveClasses.sort((a, b) {
-          // If statuses differ, prioritize LIVE
           if (a.status == 'LIVE' && b.status != 'LIVE') return -1;
           if (b.status == 'LIVE' && a.status != 'LIVE') return 1;
-          // Otherwise sort by scheduled time
           return a.scheduledAt.compareTo(b.scheduledAt);
         });
 
@@ -104,11 +104,31 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       }
     }
 
-    // Initialize player with whatever URL we found (or empty)
+    // YouTube videos: open in WebView to bypass IFrame embedding restrictions
+    if (provider == 'youtube') {
+      final uri = Uri.tryParse(videoUrl);
+      final videoId = uri?.queryParameters['v'];
+      final mobileUrl = videoId != null
+          ? 'https://m.youtube.com/watch?v=$videoId&autoplay=1'
+          : videoUrl;
+
+      final controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setUserAgent(
+          'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 '
+          '(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+        )
+        ..loadRequest(Uri.parse(mobileUrl));
+
+      setState(() {
+        _webViewController = controller;
+        _isLoadingContent = false;
+      });
+      return;
+    }
+
+    // External / S3 videos
     _videoPlayerNotifier.initialize(videoUrl, lecture);
-
-    // Listen for completion handled via provider state listener in build method
-
     setState(() {
       _isLoadingContent = false;
     });
@@ -384,6 +404,11 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                     style: const TextStyle(color: Colors.white),
                   ),
                 )
+              : (_webViewController != null)
+              ? WebViewWidget(
+                  key: ValueKey(_webViewController.hashCode),
+                  controller: _webViewController!,
+                )
               : (controller != null)
               ? Stack(
                   fit: StackFit.expand,
@@ -395,7 +420,6 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                         aspectRatio: 16 / 9,
                       ),
                     ),
-                    // Overlay to hide YouTube's copy link icon (bottom-left)
                     Positioned(
                       bottom: 0,
                       left: 0,
