@@ -128,13 +128,29 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             couponCode: formData.couponCode,
           );
 
-      // Extract order id from response
-      final orderId = (result['_id'] ?? result['id'] ?? result['orderId'] ?? '')
-          .toString();
+      // Prefer data.order.id from checkout envelope
+      final order = result['order'];
+      final orderId = (order is Map
+              ? (order['id'] ?? order['_id'])
+              : null) ??
+          result['_id'] ??
+          result['id'] ??
+          result['orderId'] ??
+          '';
+      final orderIdStr = orderId.toString();
 
       if (!mounted) return;
+      if (orderIdStr.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Order created but payment id missing'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
       ref.invalidate(cartProvider);
-      context.push(RouteConstants.remediesPaymentPath, extra: orderId);
+      context.push(RouteConstants.remediesPaymentPath, extra: orderIdStr);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

@@ -160,7 +160,7 @@ class RemidiesProductCard extends ConsumerWidget {
                     ),
                   ),
                 ),
-                if (product.stock == 0)
+                if (product.isOutOfStock)
                   Positioned(
                     top: 8,
                     left: 8,

@@ -6,6 +6,7 @@ class CartItem {
   final String productId;
   final int quantity;
   final Product product;
+  final double? lineTotal;
 
   CartItem({
     required this.id,
@@ -13,6 +14,7 @@ class CartItem {
     required this.productId,
     required this.quantity,
     required this.product,
+    this.lineTotal,
   });
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
@@ -21,7 +23,8 @@ class CartItem {
       id: (json['id'] ?? json['_id'] ?? '') as String,
       cartId: (json['cartId'] ?? json['cart_id'] ?? '') as String,
       productId:
-          (json['productId'] ?? json['product_id'] ??
+          (json['productId'] ??
+                  json['product_id'] ??
                   (productJson is Map ? productJson['id'] : null) ??
                   '')
               as String,
@@ -29,6 +32,9 @@ class CartItem {
       product: productJson is Map<String, dynamic>
           ? Product.fromJson(productJson)
           : Product.fromJson(const {}),
+      lineTotal: json['lineTotal'] != null
+          ? double.tryParse(json['lineTotal'].toString())
+          : null,
     );
   }
 
@@ -39,10 +45,11 @@ class CartItem {
       'productId': productId,
       'quantity': quantity,
       'product': product.toJson(),
+      if (lineTotal != null) 'lineTotal': lineTotal,
     };
   }
 
-  double get totalPrice => product.price * quantity;
+  double get totalPrice => lineTotal ?? (product.price * quantity);
 
   @override
   String toString() {

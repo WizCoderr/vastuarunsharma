@@ -46,9 +46,14 @@ class ApiEndpoints {
   static const String remediesVerify = '/api/payments/remidies/verify';
   static const String freeEnroll = '/api/payments/free-enroll';
 
-  // Remidies (Vastu Store)
-  static const String remidiesCategories = '/api/student/remidies/categories';
-  static const String remidiesProducts = '/api/student/remidies/products/all';
+  // Remidies public catalog (no auth)
+  static const String remidiesCategories = '/api/public/remidies/categories';
+  static const String remidiesProductsAll = '/api/public/remidies/products/all';
+  static const String remidiesProducts = '/api/public/remidies/products';
+  static String remidiesProduct(String id) =>
+      '/api/public/remidies/products/$id';
+
+  // Remidies cart / orders (Bearer required)
   static const String remidiesCart = '/api/student/remidies/cart';
   static const String remidiesOrders = '/api/student/remidies/orders';
   static String remidiesCartItem(String productId) =>

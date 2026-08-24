@@ -2,50 +2,70 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vastuarunsharma/data/models/remidies/category.dart';
+import 'package:vastuarunsharma/data/models/remidies/product.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/cart_providers.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/remidies_providers.dart';
 import 'package:vastuarunsharma/presentation/screens/remidies/cart_screen.dart';
-import 'package:vastuarunsharma/presentation/screens/remidies/remidies_products_screen.dart';
+import 'package:vastuarunsharma/presentation/screens/remidies/product_detail_screen.dart';
 
-class RemidiesScreen extends ConsumerWidget {
+class RemidiesScreen extends ConsumerStatefulWidget {
   const RemidiesScreen({super.key});
 
+  @override
+  ConsumerState<RemidiesScreen> createState() => _RemidiesScreenState();
+}
+
+class _RemidiesScreenState extends ConsumerState<RemidiesScreen> {
   static const Color _primary = Color(0xFF984624);
   static const Color _onBackground = Color(0xFF1A1C1C);
   static const Color _onSurfaceVariant = Color(0xFF55433C);
   static const Color _background = Color(0xFFF9F9F9);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      body: Center(
-        child: Text(
-          'Remidies comming soon...',
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
-        ),
-      )
-    );
+  void initState() {
+    super.initState();
+    // Default: show all products
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(selectedCategoryIdProvider.notifier).state = null;
+    });
   }
-  Widget _buildBody(BuildContext context, WidgetRef ref) {
+
+  @override
+  Widget build(BuildContext context) {
     final categoriesAsync = ref.watch(categoriesProvider);
     final cartItemCount = ref.watch(cartItemCountProvider);
+    final selectedCategoryId = ref.watch(selectedCategoryIdProvider);
+    final productsAsync = ref.watch(
+      productsProvider((
+        page: 1,
+        limit: 50,
+        categoryId: selectedCategoryId,
+      )),
+    );
+
+    final topInset = MediaQuery.viewPaddingOf(context).top;
 
     return Scaffold(
       backgroundColor: _background,
-      body: Column(
-        children: [
-          _buildAppBar(context, cartItemCount),
-          Expanded(
-            child: categoriesAsync.when(
-              data: (categories) =>
-                  _buildContent(context, ref, categories),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, st) => Center(
-                child: Text('Error loading categories'),
+      body: Padding(
+        padding: EdgeInsets.only(top: topInset),
+        child: Column(
+          children: [
+            _buildAppBar(context, cartItemCount),
+            Expanded(
+              child: categoriesAsync.when(
+                data: (categories) => _buildContent(
+                  categories: categories,
+                  selectedCategoryId: selectedCategoryId,
+                  productsAsync: productsAsync,
+                ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, st) =>
+                    const Center(child: Text('Error loading categories')),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -62,26 +82,26 @@ class RemidiesScreen extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          const Text(
-            'Vastu Arun Sharma',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1C1917),
-              letterSpacing: -0.5,
+          const Expanded(
+            child: Text(
+              'Vastu Arun Sharma',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1C1917),
+                letterSpacing: -0.5,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const Spacer(),
           Stack(
             clipBehavior: Clip.none,
             children: [
               IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
                 onPressed: () {
-                  Navigator.of(
-                    context,
-                  ).push(MaterialPageRoute(builder: (_) => const CartScreen()));
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CartScreen()),
+                  );
                 },
                 icon: const Icon(
                   Icons.shopping_cart_outlined,
@@ -90,8 +110,8 @@ class RemidiesScreen extends ConsumerWidget {
               ),
               if (cartItemCount > 0)
                 Positioned(
-                  top: -4,
-                  right: -6,
+                  top: 4,
+                  right: 4,
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     constraints: const BoxConstraints(
@@ -120,31 +140,113 @@ class RemidiesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildContent(
-    BuildContext context,
-    WidgetRef ref,
-    List<Category> categories,
-  ) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildContent({
+    required List<Category> categories,
+    required String? selectedCategoryId,
+    required AsyncValue<Map<String, dynamic>> productsAsync,
+  }) {
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+            child: _buildEditorialHeader(),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 28, bottom: 8),
+            child: _buildCategoryPills(
+              categories: categories,
+              selectedCategoryId: selectedCategoryId,
+            ),
+          ),
+        ),
+        productsAsync.when(
+          loading: () => const SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(child: CircularProgressIndicator(color: _primary)),
+          ),
+          error: (e, _) => const SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: Text(
+                'Failed to load products',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ),
+          data: (result) {
+            final products = result['products'] as List<Product>;
+            if (products.isEmpty) {
+              return const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Text(
+                    'No products available',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              );
+            }
+            return SliverPadding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 100),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: 0.68,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) =>
+                      _HomeProductCard(product: products[index]),
+                  childCount: products.length,
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryPills({
+    required List<Category> categories,
+    required String? selectedCategoryId,
+  }) {
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         children: [
-          _buildEditorialHeader(),
-          const SizedBox(height: 32),
-          _buildAllProductsCard(context, ref),
-          const SizedBox(height: 24),
-          _buildCategoryGrid(context, ref, categories),
+          _CategoryPill(
+            label: 'All Products',
+            isSelected: selectedCategoryId == null,
+            onTap: () {
+              ref.read(selectedCategoryIdProvider.notifier).state = null;
+            },
+          ),
+          for (final category in categories)
+            _CategoryPill(
+              label: category.name,
+              isSelected: selectedCategoryId == category.id,
+              onTap: () {
+                ref.read(selectedCategoryIdProvider.notifier).state =
+                    category.id;
+              },
+            ),
         ],
       ),
     );
   }
 
   Widget _buildEditorialHeader() {
-    return Column(
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'PURIFICATION & HARMONY',
           style: TextStyle(
             color: _primary,
@@ -153,9 +255,9 @@ class RemidiesScreen extends ConsumerWidget {
             letterSpacing: 2.5,
           ),
         ),
-        const SizedBox(height: 8),
-        RichText(
-          text: const TextSpan(
+        SizedBox(height: 8),
+        Text.rich(
+          TextSpan(
             style: TextStyle(
               fontSize: 38,
               fontWeight: FontWeight.w800,
@@ -172,164 +274,222 @@ class RemidiesScreen extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        const Text(
+        SizedBox(height: 16),
+        Text(
           'Curated metaphysical tools designed to align your physical space with universal energies. Browse our specialized collections.',
           style: TextStyle(color: _onSurfaceVariant, fontSize: 16, height: 1.5),
         ),
       ],
     );
   }
-
-  Widget _buildAllProductsCard(BuildContext context, WidgetRef ref) {
-    return _CategoryCard(
-      title: 'All Products',
-      subtitle: 'Explore the complete sanctuary collection',
-      imageUrl:
-          'https://vastu-prod-data.s3.ap-south-1.amazonaws.com/vastu-courses/images/All%20Products.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=ASIAX47CH4GXOTUDVWMT%2F20260420%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260420T235954Z&X-Amz-Expires=300&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEGAaCmFwLXNvdXRoLTEiSDBGAiEAyE46GVEGX1HN839MhyJ4YBaGI2uVcW%2FsHQndKrzjcugCIQCRBbG%2BqFCLGSvMDgBRfy0X7LV78DwbMlTUDyoCuatpAirWAggpEAAaDDU0MzI1MDk2NDkxMCIMaCqLlxw%2FtTMQrRWjKrMCxHdbhPrbAIFrugeMQzMgMDUz7wCaeQqcFPPtiBXj9GTOFU84l81qW4YHjjXlD%2Ff4ZrVGRzhfRCu8g0ijAveHkLvDzXSzZZZF25wRcCejHEtKa4QjYZzTFLFHFXkYgfuvelwBHcKlqzXUY0r%2BtXvptRcSa0B3AUTwuCl9ciY%2FHzC32zMgXAM8%2FB330HKAmwAms2fFKYTk5oygQwkEPZwwRiooB3zQpbleoE6f7WPglp41n3ms1C7Sq658D%2BGYkmjXRJrNicVtATPOEzqzMzbKg69iZGJ6Y71c7f23m2eQlPs1wRxRMfYAPbX7WP%2Fb8zU5dvRximDDa4KFyysVzTR3ii0CwhMmqJKNsj2ulRlu1W%2FLsaKbDaWOkhprc7ET6yMJtrx8%2FvNLRnyMK1PnSClS9TY7yjD2%2BJrPBjqsAgaylVXf84hup0kTCUv6vimu8a5CO3t8ZeAJJt%2BTwQrkYXUb0FN%2F7g29mlzrqvXQroGpHNPSmWjEHmzu4aDJgscNcytZ1S0cA4eBg66xYDXFgm1iRx16fO9xiYRMmqLD1fy136s17aIlIRWl%2BQZVcwpPe0rKK%2FMsSPKw5tSEOYbHUiTs3Z%2B7KtKRVxC%2BTWbRLm4k3Fg8dRrte46w6%2Fc3ntIUGFFg4K2NQERW%2FZSluhSvgbmdu1qJ0GCdZHpzTo7nDw6zHF%2B1Hq%2F9TpiqQ7lCUKf7a204gNjQKau8KJ%2BX0Z%2FcxpEgmcicqJHExML3Vx9pRk2VmeCxvHuj6SZKvn6L2m6cypcROjbvkclEoI6d6MEnfhVZQH%2BRXI5jYiaEcloGbIeWbztQgSMLa3oXSA%3D%3D&X-Amz-Signature=95712aafba13fc5db22f1ab42a5747fdc6693dd6188676d755b0f22e2d4b6387&X-Amz-SignedHeaders=host&response-content-disposition=inline',
-      height: 220,
-      titleSize: 28,
-      onTap: () {
-        ref.read(selectedCategoryIdProvider.notifier).state = null;
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => const RemidiesProductsScreen(
-              title: 'All Products',
-              categoryId: null,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildCategoryGrid(
-    BuildContext context,
-    WidgetRef ref,
-    List<Category> categories,
-  ) {
-    if (categories.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
-        child: Center(
-          child: Text(
-            'No categories available',
-            style: TextStyle(color: Colors.grey, fontSize: 14),
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        for (final category in categories) ...[
-          _CategoryCard(
-            title: category.name,
-            subtitle: category.description ?? 'Explore ${category.name}',
-            imageUrl: category.image ?? '',
-            height: 200,
-            titleSize: 24,
-            onTap: () {
-              ref.read(selectedCategoryIdProvider.notifier).state = category.id;
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => RemidiesProductsScreen(
-                    title: category.name,
-                    categoryId: category.id,
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-        ],
-      ],
-    );
-  }
 }
 
-class _CategoryCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String imageUrl;
-  final double height;
-  final double titleSize;
+class _CategoryPill extends StatelessWidget {
+  final String label;
+  final bool isSelected;
   final VoidCallback onTap;
 
-  const _CategoryCard({
-    required this.title,
-    required this.subtitle,
-    required this.imageUrl,
-    required this.height,
-    required this.titleSize,
+  const _CategoryPill({
+    required this.label,
+    required this.isSelected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Container(
-          height: height,
-          width: double.infinity,
-          color: const Color(0xFFF3F3F3),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (imageUrl.isNotEmpty)
-                CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (_, _) =>
-                      Container(color: const Color(0xFFE2E2E2)),
-                  errorWidget: (_, _, _) =>
-                      Container(color: const Color(0xFFE2E2E2)),
-                )
-              else
-                Container(color: const Color(0xFFE2E2E2)),
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [Color(0xB3000000), Color(0x00000000)],
-                  ),
-                ),
+    return Padding(
+      padding: const EdgeInsets.only(right: 10),
+      child: Material(
+        color: isSelected ? const Color(0xFF984624) : Colors.white,
+        shape: StadiumBorder(
+          side: BorderSide(
+            color: isSelected
+                ? const Color(0xFF984624)
+                : const Color(0xFFE7E0DA),
+          ),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const StadiumBorder(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : const Color(0xFF55433C),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
-              Positioned(
-                left: 24,
-                right: 24,
-                bottom: 24,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: titleSize,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -0.5,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeProductCard extends ConsumerWidget {
+  final Product product;
+
+  const _HomeProductCard({required this.product});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      elevation: 0,
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(
+              builder: (_) => ProductDetailScreen(productId: product.id),
+            ),
+          );
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              flex: 3,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ColoredBox(color: const Color(0xFFF3F3F3)),
+                  if (product.image != null && product.image!.isNotEmpty)
+                    CachedNetworkImage(
+                      imageUrl: product.image!,
+                      fit: BoxFit.cover,
+                      placeholder: (_, _) =>
+                          const ColoredBox(color: Color(0xFFF3F3F3)),
+                      errorWidget: (_, _, _) => const ColoredBox(
+                        color: Color(0xFFF3F3F3),
+                        child: Icon(Icons.image_not_supported_outlined),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                  if (product.isOutOfStock)
+                    const Positioned(
+                      top: 8,
+                      left: 8,
+                      child: _OutOfStockBadge(),
+                    ),
+                ],
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      subtitle,
+                      product.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: Color(0xCCFFFFFF),
-                        fontSize: 13,
+                        color: Color(0xFF1A1C1C),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        height: 1.25,
                       ),
+                    ),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Text(
+                          '₹${_formatPrice(product.price)}',
+                          style: const TextStyle(
+                            color: Color(0xFF984624),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 36,
+                            minHeight: 36,
+                          ),
+                          onPressed: product.isOutOfStock
+                              ? null
+                              : () async {
+                                  try {
+                                    await ref.read(
+                                      addToCartProvider
+                                          .call((product.id, 1))
+                                          .future,
+                                    );
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Added to cart'),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            e
+                                                .toString()
+                                                .replaceFirst('Exception: ', ''),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                          icon: Icon(
+                            Icons.add_shopping_cart_outlined,
+                            color: product.isOutOfStock
+                                ? Colors.grey
+                                : const Color(0xFF984624),
+                            size: 20,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _formatPrice(double price) {
+    final str = price.toInt().toString();
+    if (str.length <= 3) return str;
+    return '${str.substring(0, str.length - 3)},${str.substring(str.length - 3)}';
+  }
+}
+
+class _OutOfStockBadge extends StatelessWidget {
+  const _OutOfStockBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.red,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: const Text(
+        'Out of Stock',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );

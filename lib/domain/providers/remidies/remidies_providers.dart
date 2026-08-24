@@ -15,6 +15,10 @@ final dioProvider = Provider<Dio>((ref) {
       receiveTimeout: const Duration(seconds: 30),
       sendTimeout: const Duration(seconds: 30),
       responseType: ResponseType.json,
+      contentType: Headers.jsonContentType,
+      headers: {
+        Headers.acceptHeader: Headers.jsonContentType,
+      },      
       validateStatus: (status) {
         return status != null && status < 500;
       },
@@ -42,8 +46,7 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 
 typedef ProductsParams = ({int page, int limit, String? categoryId});
 
-// Products provider — backend supports categoryId + isActive query params
-// on GET /api/student/remidies/products/all
+// Products provider — public catalog; do not send isActive
 final productsProvider =
     FutureProvider.family<Map<String, dynamic>, ProductsParams>((
       ref,
@@ -54,7 +57,7 @@ final productsProvider =
         page: params.page,
         limit: params.limit,
         categoryId: params.categoryId,
-        isActive: true,
+        fetchAll: true,
       );
     });
 
@@ -64,12 +67,7 @@ final productProvider = FutureProvider.family<Product, String>((
   productId,
 ) async {
   final repository = ref.watch(remidiesRepositoryProvider);
-  final result = await repository.getProducts(page: 1, limit: 100);
-  final products = result['products'] as List<Product>;
-  return products.firstWhere(
-    (p) => p.id == productId,
-    orElse: () => throw Exception('Product not found'),
-  );
+  return repository.getProductById(productId);
 });
 
 // Filtered products provider (client-side filtering)

@@ -1,0 +1,46 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "name": "vastuarunsharma",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "vastuarunsharma (profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "vastuarunsharma (release mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        },
+        {
+            "name": "firebase_messaging-16.4.1",
+            "cwd": "build/ios/SourcePackages/firebase_messaging-16.4.1",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "firebase_messaging-16.4.1 (profile mode)",
+            "cwd": "build/ios/SourcePackages/firebase_messaging-16.4.1",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "firebase_messaging-16.4.1 (release mode)",
+            "cwd": "build/ios/SourcePackages/firebase_messaging-16.4.1",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        }
+    ]
+}

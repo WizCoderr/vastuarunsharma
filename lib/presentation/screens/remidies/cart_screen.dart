@@ -322,6 +322,16 @@ class _CartItemCardState extends ConsumerState<_CartItemCard> {
 
   Future<void> _setQuantity(int newQty) async {
     if (_busy) return;
+    final productId = widget.item.productId.isNotEmpty
+        ? widget.item.productId
+        : widget.item.product.id;
+    if (productId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Missing product id for cart item')),
+      );
+      return;
+    }
+
     final repo = ref.read(remidiesRepositoryProvider);
     setState(() {
       _optimisticQty = newQty;
@@ -329,15 +339,19 @@ class _CartItemCardState extends ConsumerState<_CartItemCard> {
     });
     try {
       if (newQty <= 0) {
-        await repo.removeCartItem(widget.item.productId);
+        await repo.removeCartItem(productId);
       } else {
-        await repo.updateCartItem(widget.item.productId, newQty);
+        await repo.updateCartItem(productId, newQty);
       }
       ref.invalidate(cartProvider);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update cart: $e')),
+          SnackBar(
+            content: Text(
+              e.toString().replaceFirst('Exception: ', ''),
+            ),
+          ),
         );
         setState(() => _optimisticQty = null);
       }
@@ -348,14 +362,22 @@ class _CartItemCardState extends ConsumerState<_CartItemCard> {
 
   Future<void> _delete() async {
     if (_busy) return;
+    final productId = widget.item.productId.isNotEmpty
+        ? widget.item.productId
+        : widget.item.product.id;
+    if (productId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Missing product id for cart item')),
+      );
+      return;
+    }
+
     setState(() {
       _optimisticQty = 0;
       _busy = true;
     });
     try {
-      await ref
-          .read(remidiesRepositoryProvider)
-          .removeCartItem(widget.item.productId);
+      await ref.read(remidiesRepositoryProvider).removeCartItem(productId);
       ref.invalidate(cartProvider);
     } catch (e) {
       if (mounted) {

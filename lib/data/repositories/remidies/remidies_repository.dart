@@ -25,14 +25,10 @@ class RemidiesRepository {
     return token;
   }
 
-  // Categories API
+  // Categories API (public — no auth)
   Future<List<Category>> getCategories() async {
     try {
-      final token = await _getAuthToken();
-      final response = await dio.get(
-        ApiEndpoints.remidiesCategories,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
+      final response = await dio.get(ApiEndpoints.remidiesCategories);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'] ?? [];
@@ -40,34 +36,41 @@ class RemidiesRepository {
             .map((json) => Category.fromJson(json as Map<String, dynamic>))
             .toList();
       } else {
-        throw Exception(response.data['error'] ?? 'Failed to load categories');
+        throw Exception(
+          response.data['error'] ??
+              response.data['message'] ??
+              'Failed to load categories',
+        );
       }
     } on DioException catch (e) {
       throw Exception(
-        e.response?.data['error'] ?? 'Network error loading categories',
+        e.response?.data['error'] ??
+            e.response?.data['message'] ??
+            'Network error loading categories',
       );
     }
   }
 
-  // Products API
+  /// Full catalog via `/products/all`, or paged via `/products`.
   Future<Map<String, dynamic>> getProducts({
     int page = 1,
     int limit = 20,
     String? categoryId,
-    bool isActive = true,
+    bool fetchAll = true,
   }) async {
     try {
-      final token = await _getAuthToken();
+      final path = fetchAll
+          ? ApiEndpoints.remidiesProductsAll
+          : ApiEndpoints.remidiesProducts;
+      final queryParameters = <String, dynamic>{
+        if (!fetchAll) ...{'page': page, 'limit': limit},
+        if (categoryId != null && categoryId.isNotEmpty)
+          'categoryId': categoryId,
+      };
+
       final response = await dio.get(
-        ApiEndpoints.remidiesProducts,
-        queryParameters: {
-          'page': page,
-          'limit': limit,
-          if (categoryId != null && categoryId.isNotEmpty)
-            'categoryId': categoryId,
-          'isActive': isActive,
-        },
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        path,
+        queryParameters: queryParameters.isEmpty ? null : queryParameters,
       );
 
       developer.log(
@@ -76,22 +79,33 @@ class RemidiesRepository {
         name: 'RemidiesRepo',
       );
       if (response.statusCode == 200) {
-        final raw = response.data['data'];
+        final body = response.data;
+        final raw = body is Map ? body['data'] : null;
         List<dynamic> productList;
         int total;
         int resPage;
         int resLimit;
+        int? totalPages;
 
         if (raw is Map<String, dynamic>) {
           productList = (raw['products'] as List<dynamic>?) ?? const [];
-          total = (raw['total'] as int?) ?? productList.length;
-          resPage = (raw['page'] as int?) ?? page;
-          resLimit = (raw['limit'] as int?) ?? limit;
+          total = (raw['total'] as num?)?.toInt() ?? productList.length;
+          resPage = (raw['page'] as num?)?.toInt() ?? page;
+          resLimit = (raw['limit'] as num?)?.toInt() ?? limit;
         } else if (raw is List<dynamic>) {
           productList = raw;
-          total = productList.length;
-          resPage = page;
-          resLimit = limit;
+          final meta = body is Map ? body['meta'] : null;
+          if (meta is Map<String, dynamic>) {
+            total = (meta['total'] as num?)?.toInt() ?? productList.length;
+            resPage = (meta['page'] as num?)?.toInt() ?? page;
+            resLimit = (meta['limit'] as num?)?.toInt() ?? limit;
+            totalPages = (meta['totalPages'] as num?)?.toInt();
+          } else {
+            total = (body is Map ? body['total'] as num? : null)?.toInt() ??
+                productList.length;
+            resPage = page;
+            resLimit = limit;
+          }
         } else {
           productList = const [];
           total = 0;
@@ -106,13 +120,43 @@ class RemidiesRepository {
           'total': total,
           'page': resPage,
           'limit': resLimit,
+          'totalPages': ?totalPages,
         };
       } else {
-        throw Exception(response.data['error'] ?? 'Failed to load products');
+        throw Exception(
+          response.data['error'] ??
+              response.data['message'] ??
+              'Failed to load products',
+        );
       }
     } on DioException catch (e) {
       throw Exception(
-        e.response?.data['error'] ?? 'Network error loading products',
+        e.response?.data['error'] ??
+            e.response?.data['message'] ??
+            'Network error loading products',
+      );
+    }
+  }
+
+  Future<Product> getProductById(String id) async {
+    try {
+      final response = await dio.get(ApiEndpoints.remidiesProduct(id));
+
+      if (response.statusCode == 200) {
+        final raw = response.data['data'] ?? response.data;
+        return Product.fromJson(raw as Map<String, dynamic>);
+      } else {
+        throw Exception(
+          response.data['error'] ??
+              response.data['message'] ??
+              'Failed to load product',
+        );
+      }
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['error'] ??
+            e.response?.data['message'] ??
+            'Network error loading product',
       );
     }
   }
@@ -143,18 +187,32 @@ class RemidiesRepository {
       final token = await _getAuthToken();
       final response = await dio.post(
         ApiEndpoints.remidiesCart,
-        data: {'productId': productId, 'quantity': quantity},
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        data: <String, dynamic>{
+          'productId': productId,
+          'quantity': quantity,
+        },
+        options: Options(
+          contentType: Headers.jsonContentType,
+          headers: {
+            'Authorization': 'Bearer $token',
+            Headers.contentTypeHeader: Headers.jsonContentType,
+          },
+        ),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return Cart.fromJson(response.data['data'] as Map<String, dynamic>);
       } else {
-        throw Exception(response.data['error'] ?? 'Failed to add to cart');
+        final err = response.data is Map
+            ? (response.data['error'] ?? response.data['message'])
+            : response.data;
+        throw Exception(err ?? 'Failed to add to cart');
       }
     } on DioException catch (e) {
       throw Exception(
-        e.response?.data['error'] ?? 'Network error adding to cart',
+        e.response?.data['error'] ??
+            e.response?.data['message'] ??
+            'Network error adding to cart',
       );
     }
   }
@@ -164,18 +222,29 @@ class RemidiesRepository {
       final token = await _getAuthToken();
       final response = await dio.put(
         ApiEndpoints.remidiesCartItem(productId),
-        data: {'quantity': quantity},
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        data: <String, dynamic>{'quantity': quantity},
+        options: Options(
+          contentType: Headers.jsonContentType,
+          headers: {
+            'Authorization': 'Bearer $token',
+            Headers.contentTypeHeader: Headers.jsonContentType,
+          },
+        ),
       );
 
       if (response.statusCode == 200) {
         return Cart.fromJson(response.data['data'] as Map<String, dynamic>);
       } else {
-        throw Exception(response.data['error'] ?? 'Failed to update cart');
+        final err = response.data is Map
+            ? (response.data['error'] ?? response.data['message'])
+            : response.data;
+        throw Exception(err ?? 'Failed to update cart');
       }
     } on DioException catch (e) {
       throw Exception(
-        e.response?.data['error'] ?? 'Network error updating cart',
+        e.response?.data['error'] ??
+            e.response?.data['message'] ??
+            'Network error updating cart',
       );
     }
   }
@@ -185,8 +254,16 @@ class RemidiesRepository {
       final token = await _getAuthToken();
       final response = await dio.delete(
         ApiEndpoints.remidiesCartItem(productId),
-        data: {}, // Send empty object in body as API expects it
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        // Production still validates DELETE with updateCartItemSchema (quantity >= 1)
+        // until the removeCartItemSchema deploy lands. Body is ignored by removeFromCart.
+        data: <String, dynamic>{'quantity': 1},
+        options: Options(
+          contentType: Headers.jsonContentType,
+          headers: {
+            'Authorization': 'Bearer $token',
+            Headers.contentTypeHeader: Headers.jsonContentType,
+          },
+        ),
       );
 
       if (response.statusCode == 200) {
@@ -196,7 +273,9 @@ class RemidiesRepository {
       }
     } on DioException catch (e) {
       throw Exception(
-        e.response?.data['error'] ?? 'Network error removing from cart',
+        e.response?.data['error'] ??
+            e.response?.data['message'] ??
+            'Network error removing from cart',
       );
     }
   }
@@ -316,12 +395,12 @@ class RemidiesRepository {
     try {
       final token = await _getAuthToken();
       final body = <String, dynamic>{
-        'fullName': fullName,
-        'phoneNumber': phoneNumber,
-        'address': address,
-        'city': city,
-        'state': state,
-        'postalCode': postalCode,
+        'shippingName': fullName,
+        'shippingPhone': phoneNumber,
+        'shippingAddress': address,
+        'shippingCity': city,
+        'shippingState': state,
+        'shippingPostal': postalCode,
         if (couponCode != null && couponCode.isNotEmpty)
           'couponCode': couponCode,
       };
@@ -334,11 +413,17 @@ class RemidiesRepository {
         final raw = response.data['data'] ?? response.data;
         return raw as Map<String, dynamic>;
       } else {
-        throw Exception(response.data['error'] ?? 'Failed to place order');
+        throw Exception(
+          response.data['error'] ??
+              response.data['message'] ??
+              'Failed to place order',
+        );
       }
     } on DioException catch (e) {
       throw Exception(
-        e.response?.data['error'] ?? 'Network error placing order',
+        e.response?.data['error'] ??
+            e.response?.data['message'] ??
+            'Network error placing order',
       );
     }
   }

@@ -5,9 +5,11 @@ class Product {
   final String name;
   final String categoryId;
   final String? description;
-  final String? image;
+  final List<String> images;
   final double price;
-  final int stock;
+  final double? rate;
+  /// Present on cart nested products; stripped on public catalog.
+  final int? stock;
   final bool isActive;
   final Category category;
   final double rating;
@@ -18,14 +20,18 @@ class Product {
     required this.name,
     required this.categoryId,
     this.description,
-    this.image,
+    this.images = const [],
     required this.price,
-    required this.stock,
+    this.rate,
+    this.stock,
     required this.isActive,
     required this.category,
     this.rating = 0.0,
     this.reviewCount = 0,
   });
+
+  /// First image URL for list/detail widgets that expect a single image.
+  String? get image => images.isNotEmpty ? images.first : null;
 
   factory Product.fromJson(Map<String, dynamic> json) {
     final categoryId =
@@ -35,14 +41,23 @@ class Product {
         ? Category.fromJson(categoryRaw)
         : Category(id: categoryId ?? '', name: '');
 
+    final price =
+        double.tryParse(json['price']?.toString() ?? '') ??
+        double.tryParse(json['rate']?.toString() ?? '') ??
+        0.0;
+    final rate = json['rate'] != null
+        ? double.tryParse(json['rate'].toString())
+        : null;
+
     return Product(
       id: (json['id'] ?? json['_id'] ?? '') as String,
       name: (json['name'] as String?) ?? '',
       categoryId: categoryId ?? category.id,
       description: json['description'] as String?,
-      image: _normalizeImageUrl(json['image'] as String?),
-      price: double.tryParse(json['price']?.toString() ?? '') ?? 0.0,
-      stock: int.tryParse(json['stock']?.toString() ?? '') ?? (json['stock'] as num?)?.toInt() ?? 0,
+      images: _parseImages(json),
+      price: price,
+      rate: rate,
+      stock: _parseStock(json['stock']),
       isActive: json['isActive'] as bool? ?? true,
       category: category,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
@@ -56,9 +71,10 @@ class Product {
       'name': name,
       'categoryId': categoryId,
       'description': description,
-      'image': image,
+      'images': images,
       'price': price,
-      'stock': stock,
+      if (rate != null) 'rate': rate,
+      if (stock != null) 'stock': stock,
       'isActive': isActive,
       'category': category.toJson(),
       'rating': rating,
@@ -66,7 +82,28 @@ class Product {
     };
   }
 
-  bool get isOutOfStock => stock == 0;
+  /// Only true when stock is known and zero (cart nested product).
+  bool get isOutOfStock => stock != null && stock == 0;
+
+  static List<String> _parseImages(Map<String, dynamic> json) {
+    final rawImages = json['images'];
+    if (rawImages is List) {
+      return rawImages
+          .map((e) => _normalizeImageUrl(e?.toString()))
+          .whereType<String>()
+          .where((url) => url.isNotEmpty)
+          .toList();
+    }
+    final single = _normalizeImageUrl(json['image'] as String?);
+    if (single != null && single.isNotEmpty) return [single];
+    return const [];
+  }
+
+  static int? _parseStock(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
+  }
 
   static String? _normalizeImageUrl(String? url) {
     if (url == null || url.isEmpty) return url;
