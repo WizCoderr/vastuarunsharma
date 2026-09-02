@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vastuarunsharma/core/constants/route_constants.dart';
+import 'package:vastuarunsharma/core/utils/price_format.dart';
 import 'package:vastuarunsharma/data/models/remidies/coupon.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/cart_providers.dart';
+import 'package:vastuarunsharma/presentation/providers/auth_provider.dart';
+import 'package:vastuarunsharma/domain/providers/remidies/coupon_providers.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/order_providers.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/remidies_providers.dart';
 
@@ -27,9 +30,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   bool _isPlacingOrder = false;
   String? _couponError;
   String? _couponSuccess;
-  double _couponDiscountValue = 0;
-  DiscountType? _couponDiscountType;
+  double _couponDiscountAmount = 0;
+  double? _pricingBulkDiscount;
   String? _appliedCouponCode;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = ref.read(authStateProvider).value;
+      final mobile = user?.mobileNumber?.trim();
+      if (mobile != null && mobile.isNotEmpty && _phoneNumberController.text.isEmpty) {
+        setState(() => _phoneNumberController.text = mobile);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -43,9 +58,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     super.dispose();
   }
 
-  Future<void> _applyCoupon() async {
-    final code = _couponController.text.trim();
+  Future<void> _applyCoupon([String? codeOverride]) async {
+    final code = (codeOverride ?? _couponController.text).trim();
     if (code.isEmpty) return;
+
+    if (codeOverride != null) {
+      _couponController.text = code;
+    }
 
     setState(() {
       _isValidatingCoupon = true;
@@ -54,19 +73,20 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     });
 
     try {
-      final result = await ref
-          .read(remidiesRepositoryProvider)
-          .validateCoupon(code);
+      final result = await ref.read(remidiesRepositoryProvider).validateCoupon(
+            code,
+            phoneNumber: _phoneNumberController.text.trim(),
+          );
 
-      final discountType = result['discountType'] == 'FIXED'
-          ? DiscountType.FIXED
-          : DiscountType.PERCENTAGE;
-      final discountValue = _parseDouble(result['discountValue']);
+      final discountAmount = _parseDouble(result['discountAmount']);
+      final bulkDiscount = result['bulkDiscount'] != null
+          ? _parseDouble(result['bulkDiscount'])
+          : null;
 
       setState(() {
         _appliedCouponCode = code;
-        _couponDiscountType = discountType;
-        _couponDiscountValue = discountValue;
+        _couponDiscountAmount = discountAmount;
+        _pricingBulkDiscount = bulkDiscount;
         _couponSuccess = result['message']?.toString() ??
             'Coupon applied successfully!';
         _couponError = null;
@@ -74,8 +94,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     } catch (e) {
       setState(() {
         _appliedCouponCode = null;
-        _couponDiscountType = null;
-        _couponDiscountValue = 0;
+        _couponDiscountAmount = 0;
+        _pricingBulkDiscount = null;
         _couponError = e.toString().replaceFirst('Exception: ', '');
         _couponSuccess = null;
       });
@@ -87,8 +107,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   void _removeCoupon() {
     setState(() {
       _appliedCouponCode = null;
-      _couponDiscountType = null;
-      _couponDiscountValue = 0;
+      _couponDiscountAmount = 0;
+      _pricingBulkDiscount = null;
       _couponError = null;
       _couponSuccess = null;
       _couponController.clear();
@@ -223,8 +243,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               const SizedBox(height: 20),
               _PriceBreakdownCard(
                 appliedCouponCode: _appliedCouponCode,
-                couponDiscountType: _couponDiscountType,
-                couponDiscountValue: _couponDiscountValue,
+                couponDiscountAmount: _couponDiscountAmount,
+                pricingBulkDiscount: _pricingBulkDiscount,
               ),
               const SizedBox(height: 16),
             ],
@@ -300,9 +320,59 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   Widget _buildCouponSection() {
+    final myCouponsAsync = ref.watch(myCouponsProvider);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        myCouponsAsync.when(
+          data: (coupons) {
+            if (coupons.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Your coupons',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1A1C19),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: coupons.map((coupon) {
+                    final label = coupon.discountType == DiscountType.PERCENTAGE
+                        ? '${coupon.code} · ${coupon.discountValue.toStringAsFixed(coupon.discountValue == coupon.discountValue.truncateToDouble() ? 0 : 1)}% off'
+                        : '${coupon.code} · ₹${coupon.discountValue.toStringAsFixed(0)} off';
+                    final isApplied = _appliedCouponCode?.toUpperCase() ==
+                        coupon.code.toUpperCase();
+
+                    return ActionChip(
+                      label: Text(label),
+                      backgroundColor: isApplied
+                          ? const Color(0xFFD7A417).withValues(alpha: 0.2)
+                          : const Color(0xFFF5F0E6),
+                      side: BorderSide(
+                        color: isApplied
+                            ? const Color(0xFFD7A417)
+                            : const Color(0xFFD3C5AE),
+                      ),
+                      onPressed: (_isValidatingCoupon || isApplied)
+                          ? null
+                          : () => _applyCoupon(coupon.code),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+              ],
+            );
+          },
+          loading: () => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
+        ),
         const Text(
           'Coupon Code',
           style: TextStyle(
@@ -425,35 +495,33 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
 class _PriceBreakdownCard extends ConsumerWidget {
   final String? appliedCouponCode;
-  final DiscountType? couponDiscountType;
-  final double couponDiscountValue;
+  final double couponDiscountAmount;
+  final double? pricingBulkDiscount;
 
   const _PriceBreakdownCard({
     required this.appliedCouponCode,
-    required this.couponDiscountType,
-    required this.couponDiscountValue,
+    required this.couponDiscountAmount,
+    required this.pricingBulkDiscount,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cartAsync = ref.watch(cartProvider);
-    final subtotal = cartAsync.when(
-      data: (cart) => cart.subtotal,
-      loading: () => 0.0,
-      error: (_, _) => 0.0,
+    final pricing = cartAsync.when(
+      data: (cart) => (
+        subtotal: cart.subtotal,
+        bulkDiscount: pricingBulkDiscount ?? cart.bulkDiscount,
+      ),
+      loading: () => (subtotal: 0.0, bulkDiscount: 0.0),
+      error: (_, _) => (subtotal: 0.0, bulkDiscount: 0.0),
     );
 
-    double couponDiscount = 0;
-    if (appliedCouponCode != null && couponDiscountType != null) {
-      if (couponDiscountType == DiscountType.PERCENTAGE) {
-        couponDiscount = subtotal * (couponDiscountValue / 100);
-      } else {
-        couponDiscount = couponDiscountValue;
-      }
-      couponDiscount = couponDiscount.clamp(0, subtotal);
-    }
-
-    final total = (subtotal - couponDiscount).clamp(0.0, double.infinity);
+    final subtotal = pricing.subtotal;
+    final bulkDiscount = pricing.bulkDiscount;
+    final couponDiscount =
+        appliedCouponCode != null ? couponDiscountAmount : 0.0;
+    final total = (subtotal - bulkDiscount - couponDiscount)
+        .clamp(0.0, double.infinity);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -475,14 +543,22 @@ class _PriceBreakdownCard extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _SummaryRow('Subtotal', '₹${_fmt(subtotal)}'),
+          _SummaryRow('Subtotal', formatInr(subtotal)),
+          if (bulkDiscount > 0) ...[
+            const SizedBox(height: 8),
+            _SummaryRow(
+              'Bulk Discount',
+              '-${formatInr(bulkDiscount)}',
+              valueColor: Colors.green,
+            ),
+          ],
           const SizedBox(height: 8),
           const _SummaryRow('Shipping', 'Free', valueColor: Colors.green),
           if (couponDiscount > 0) ...[
             const SizedBox(height: 8),
             _SummaryRow(
               'Coupon Discount',
-              '-₹${_fmt(couponDiscount)}',
+              '-${formatInr(couponDiscount)}',
               valueColor: Colors.green,
             ),
           ],
@@ -495,7 +571,7 @@ class _PriceBreakdownCard extends ConsumerWidget {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               Text(
-                '₹${_fmt(total)}',
+                formatInr(total),
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Color(0xFFD7A417),
@@ -507,13 +583,6 @@ class _PriceBreakdownCard extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  static String _fmt(double price) {
-    final rupees = price.toInt();
-    final str = rupees.toString();
-    if (str.length <= 3) return str;
-    return '${str.substring(0, str.length - 3)},${str.substring(str.length - 3)}';
   }
 }
 

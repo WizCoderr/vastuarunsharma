@@ -363,23 +363,36 @@ class RemidiesRepository {
     }
   }
 
-  Future<Map<String, dynamic>> validateCoupon(String couponCode) async {
+  Future<Map<String, dynamic>> validateCoupon(
+    String couponCode, {
+    String? phoneNumber,
+  }) async {
     try {
       final token = await _getAuthToken();
       final response = await dio.post(
         ApiEndpoints.remidiesValidateCoupon,
-        data: {'couponCode': couponCode},
+        data: {
+          'couponCode': couponCode,
+          if (phoneNumber != null && phoneNumber.trim().isNotEmpty)
+            'phoneNumber': phoneNumber.trim(),
+        },
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       if (response.statusCode == 200) {
         return (response.data['data'] ?? response.data) as Map<String, dynamic>;
       } else {
-        throw Exception(response.data['error'] ?? 'Invalid coupon');
+        throw Exception(
+          response.data['error'] ??
+              response.data['message'] ??
+              'Invalid coupon',
+        );
       }
     } on DioException catch (e) {
-      throw Exception(
-        e.response?.data['error'] ?? 'Network error validating coupon',
-      );
+      final data = e.response?.data;
+      final message = data is Map
+          ? (data['error'] ?? data['message'])
+          : null;
+      throw Exception(message?.toString() ?? 'Network error validating coupon');
     }
   }
 

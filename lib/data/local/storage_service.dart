@@ -32,7 +32,10 @@ class StorageService {
     await _prefs.remove(_tokenKey);
   }
 
-  bool get hasToken => _prefs.containsKey(_tokenKey);
+  bool get hasToken {
+    final token = getToken();
+    return token != null && token.trim().isNotEmpty;
+  }
 
   // User Data
   Future<void> saveUser(UserModel user) async {

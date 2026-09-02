@@ -27,11 +27,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   int _quantity = 1;
   bool _addingToCart = false;
 
-  Future<void> _addToCart(String productId) async {
+  Future<void> _addToCart(String productId, int quantity) async {
     if (_addingToCart) return;
     setState(() => _addingToCart = true);
     try {
-      await ref.read(addToCartProvider.call((productId, _quantity)).future);
+      await ref.read(addToCartProvider.call((productId, quantity)).future);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -72,8 +72,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (product) {
           final outOfStock = product.isOutOfStock;
-          // Public catalog often omits stock; don't lock qty at 1. Cart API enforces stock.
-          const maxQty = 99;
+          final maxQty = outOfStock ? 1 : (product.stock ?? 99);
+          final quantity = outOfStock ? 1 : _quantity.clamp(1, maxQty);
 
           return SafeArea(
             bottom: false,
@@ -284,16 +284,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 ),
                 _BottomBar(
                   outOfStock: outOfStock,
-                  quantity: _quantity,
+                  quantity: quantity,
                   maxStock: maxQty,
                   adding: _addingToCart,
                   onDecrement: () {
-                    if (_quantity > 1) setState(() => _quantity--);
+                    if (quantity > 1) setState(() => _quantity--);
                   },
                   onIncrement: () {
-                    if (_quantity < maxQty) setState(() => _quantity++);
+                    if (quantity < maxQty) setState(() => _quantity++);
                   },
-                  onAddToCart: () => _addToCart(product.id),
+                  onAddToCart: () => _addToCart(product.id, quantity),
                 ),
               ],
             ),

@@ -41,11 +41,6 @@ class ApiInterceptor extends Interceptor {
     }
 
     if (response.statusCode == 401) {
-      // Handle 401 gracefully without Dio throwing first
-      try {
-        await storage.clearAuth();
-      } catch (_) {}
-
       return handler.reject(
         DioException(
           requestOptions: response.requestOptions,
@@ -62,10 +57,6 @@ class ApiInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     final status = err.response?.statusCode;
     if (status == 401) {
-      // token expired or invalid - clear storage and throw AuthException
-      try {
-        await storage.clearAuth();
-      } catch (_) {}
       return handler.reject(
         DioException(
           requestOptions: err.requestOptions,

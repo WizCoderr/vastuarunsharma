@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vastuarunsharma/core/utils/price_format.dart';
+import 'package:vastuarunsharma/data/models/remidies/cart.dart';
 import 'package:vastuarunsharma/data/models/remidies/cart_item.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/cart_providers.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/remidies_providers.dart';
@@ -75,13 +77,17 @@ class CartScreen extends ConsumerWidget {
           ),
         ),
         data: (cart) {
-          final subtotal = cart.subtotal;
           if (cart.items.isEmpty) {
             return const _EmptyCart();
           }
+          final hasOutOfStockItems = cart.items.any(
+            (item) => item.product.isOutOfStock,
+          );
           return CustomScrollView(
             slivers: [
               SliverToBoxAdapter(child: _buildEditorialHeader()),
+              if (hasOutOfStockItems)
+                SliverToBoxAdapter(child: _buildOutOfStockBanner()),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                 sliver: SliverList.separated(
@@ -90,12 +96,43 @@ class CartScreen extends ConsumerWidget {
                   itemBuilder: (_, i) => _CartItemCard(item: cart.items[i]),
                 ),
               ),
-              SliverToBoxAdapter(child: _buildSummary(subtotal)),
+              SliverToBoxAdapter(child: _buildSummary(cart)),
               SliverToBoxAdapter(child: _buildCheckout(context)),
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildOutOfStockBanner() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFEBEE),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFBA1A1A).withValues(alpha: 0.3)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.error_outline, color: Color(0xFFBA1A1A), size: 20),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Some items in your cart are out of stock. Remove them to continue.',
+                style: TextStyle(
+                  color: Color(0xFFBA1A1A),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -131,7 +168,11 @@ class CartScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSummary(double subtotal) {
+  Widget _buildSummary(Cart cart) {
+    final subtotal = cart.subtotal;
+    final bulkDiscount = cart.bulkDiscount;
+    final total = cart.estimatedTotal;
+
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 4, 24, 24),
       padding: const EdgeInsets.all(20),
@@ -152,7 +193,15 @@ class CartScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 14),
-          _summaryRow('Subtotal', '₹${_fmt(subtotal)}'),
+          _summaryRow('Subtotal', formatInr(subtotal)),
+          if (bulkDiscount > 0) ...[
+            const SizedBox(height: 10),
+            _summaryRow(
+              'Bulk Discount',
+              '-${formatInr(bulkDiscount)}',
+              valueColor: _tertiary,
+            ),
+          ],
           const SizedBox(height: 10),
           _summaryRow('Standard Shipping', 'FREE', valueColor: _tertiary),
           const SizedBox(height: 14),
@@ -170,7 +219,7 @@ class CartScreen extends ConsumerWidget {
                 ),
               ),
               Text(
-                '₹${_fmt(subtotal)}',
+                formatInr(total),
                 style: const TextStyle(
                   color: _primary,
                   fontSize: 22,
@@ -262,17 +311,6 @@ class CartScreen extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  static String _fmt(double v) {
-    final s = v.toStringAsFixed(0);
-    final buf = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      final fromEnd = s.length - i;
-      if (i > 0 && fromEnd % 3 == 0 && fromEnd > 1) buf.write(',');
-      buf.write(s[i]);
-    }
-    return buf.toString();
   }
 }
 
@@ -395,7 +433,10 @@ class _CartItemCardState extends ConsumerState<_CartItemCard> {
   Widget build(BuildContext context) {
     final item = widget.item;
     final qty = _displayQty;
-    final lineTotal = item.product.price * qty;
+    final lineTotal = item.totalPrice;
+    final outOfStock = item.product.isOutOfStock;
+    final maxStock = item.product.stock;
+    final atMaxStock = maxStock != null && qty >= maxStock;
     return Opacity(
       opacity: _busy ? 0.6 : 1.0,
       child: Container(
@@ -445,6 +486,17 @@ class _CartItemCardState extends ConsumerState<_CartItemCard> {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
+                            if (outOfStock) ...[
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Out of Stock',
+                                style: TextStyle(
+                                  color: Color(0xFFBA1A1A),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -472,11 +524,12 @@ class _CartItemCardState extends ConsumerState<_CartItemCard> {
                       _QtyPill(
                         quantity: qty,
                         disabled: _busy,
+                        plusDisabled: outOfStock || atMaxStock,
                         onMinus: () => _setQuantity(qty - 1),
                         onPlus: () => _setQuantity(qty + 1),
                       ),
                       Text(
-                        '₹${CartScreen._fmt(lineTotal)}',
+                        formatInr(lineTotal),
                         style: const TextStyle(
                           color: CartScreen._primary,
                           fontSize: 16,
@@ -543,6 +596,7 @@ class _CartItemCardState extends ConsumerState<_CartItemCard> {
 class _QtyPill extends StatelessWidget {
   final int quantity;
   final bool disabled;
+  final bool plusDisabled;
   final VoidCallback onMinus;
   final VoidCallback onPlus;
   const _QtyPill({
@@ -550,6 +604,7 @@ class _QtyPill extends StatelessWidget {
     required this.onMinus,
     required this.onPlus,
     this.disabled = false,
+    this.plusDisabled = false,
   });
 
   @override
@@ -575,7 +630,7 @@ class _QtyPill extends StatelessWidget {
               ),
             ),
           ),
-          _qtyButton(Icons.add, disabled ? null : onPlus),
+          _qtyButton(Icons.add, disabled || plusDisabled ? null : onPlus),
         ],
       ),
     );

@@ -231,7 +231,9 @@ class _CouponTile extends StatelessWidget {
                 const Icon(Icons.calendar_today, size: 12, color: Colors.grey),
                 const SizedBox(width: 4),
                 Text(
-                  'Expires ${DateFormat('dd MMM yyyy').format(coupon.expiresAt)}',
+                  coupon.expiresAt != null
+                      ? 'Expires ${DateFormat('dd MMM yyyy').format(coupon.expiresAt!)}'
+                      : 'No expiry',
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
@@ -294,7 +296,7 @@ class _CouponFormSheetState extends State<_CouponFormSheet> {
       _maxUsesCtrl.text = c.maxUses.toString();
       _userIdCtrl.text = c.assignedUserId;
       _discountType = c.discountType.name;
-      _expiresAt = c.expiresAt;
+      _expiresAt = c.expiresAt ?? DateTime.now().add(const Duration(days: 30));
     }
   }
 

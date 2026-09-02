@@ -7,9 +7,10 @@ class Coupon {
   final double discountValue;
   final int maxUses;
   final int usedCount;
-  final DateTime expiresAt;
+  final DateTime? expiresAt;
   final bool isActive;
   final String assignedUserId;
+  final bool requiresGrant;
 
   Coupon({
     required this.id,
@@ -18,17 +19,19 @@ class Coupon {
     required this.discountValue,
     required this.maxUses,
     required this.usedCount,
-    required this.expiresAt,
+    this.expiresAt,
     required this.isActive,
     required this.assignedUserId,
+    this.requiresGrant = false,
   });
 
   int get remainingUses => maxUses - usedCount;
 
   String get statusLabel {
     if (!isActive) return 'Deactivated';
-    if (DateTime.now().isAfter(expiresAt)) return 'Expired';
+    if (expiresAt != null && DateTime.now().isAfter(expiresAt!)) return 'Expired';
     if (usedCount >= maxUses) return 'Limit Reached';
+    if (requiresGrant) return 'One-time (sent)';
     return 'Active';
   }
 
@@ -43,10 +46,11 @@ class Coupon {
       maxUses: (json['maxUses'] as num?)?.toInt() ?? 0,
       usedCount: (json['usedCount'] as num?)?.toInt() ?? 0,
       expiresAt: json['expiresAt'] != null
-          ? DateTime.parse(json['expiresAt'].toString())
-          : DateTime.now(),
+          ? DateTime.tryParse(json['expiresAt'].toString())
+          : null,
       isActive: json['isActive'] as bool? ?? false,
       assignedUserId: (json['assignedUserId'] ?? json['userId'] ?? '').toString(),
+      requiresGrant: json['requiresGrant'] as bool? ?? false,
     );
   }
 
@@ -55,9 +59,10 @@ class Coupon {
         'discountType': discountType.name,
         'discountValue': discountValue,
         'maxUses': maxUses,
-        'expiresAt': expiresAt.toIso8601String(),
+        if (expiresAt != null) 'expiresAt': expiresAt!.toIso8601String(),
         'isActive': isActive,
         'assignedUserId': assignedUserId,
+        'requiresGrant': requiresGrant,
       };
 
   static double _toDouble(dynamic value) {

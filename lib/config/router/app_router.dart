@@ -37,7 +37,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 
   bool isLoggedIn() {
     final authState = ref.read(authStateProvider);
-    return authState.asData?.value != null;
+    final hasStoredToken = ref.read(authRepositoryProvider).hasToken;
+    return authState.asData?.value != null || hasStoredToken;
   }
 
   bool isAdmin() {
@@ -46,17 +47,33 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   }
 
   return GoRouter(
-    initialLocation: RouteConstants.landing,
+    initialLocation: isLoggedIn()
+        ? RouteConstants.dashboard
+        : RouteConstants.landing,
     refreshListenable: notifier,
     errorBuilder: (context, state) =>
         Scaffold(body: Center(child: Text('Error: ${state.error}'))),
     redirect: (context, state) {
-      final loggedIn = isLoggedIn();
+      final authState = ref.read(authStateProvider);
+      if (authState.isLoading) {
+        return null;
+      }
+
+      final loggedIn =
+          authState.asData?.value != null ||
+          ref.read(authRepositoryProvider).hasToken;
       final isAuthRoute =
           state.matchedLocation == RouteConstants.login ||
           state.matchedLocation == RouteConstants.register ||
           state.matchedLocation == RouteConstants.forgotPassword ||
           state.matchedLocation == RouteConstants.resetPassword;
+
+      if (loggedIn &&
+          (state.matchedLocation == RouteConstants.landing ||
+              state.matchedLocation == RouteConstants.login ||
+              state.matchedLocation == RouteConstants.register)) {
+        return RouteConstants.dashboard;
+      }
 
       if (!loggedIn &&
           !isAuthRoute &&
@@ -104,11 +121,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteConstants.resetPassword,
         builder: (context, state) {
-          final extraToken = state.extra is String
-              ? state.extra as String
-              : null;
-          final token = state.uri.queryParameters['token'] ?? extraToken;
-          return ResetPasswordScreen(token: token);
+          final email = state.uri.queryParameters['email'];
+          final devOtp = state.uri.queryParameters['devOtp'];
+          return ResetPasswordScreen(email: email, devOtp: devOtp);
         },
       ),
       GoRoute(

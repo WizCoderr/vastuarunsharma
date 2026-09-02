@@ -4,6 +4,6 @@ class ForgotPasswordRequest {
   final String email;
 
   Map<String, dynamic> toJson() {
-    return {'email': email.trim()};
+    return {'email': email.trim().toLowerCase()};
   }
 }

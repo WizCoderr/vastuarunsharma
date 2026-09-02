@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import '../../data/local/storage_service.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/datasources/remote/auth_remote_datasource.dart';
+import '../../data/models/user_model.dart';
 import '../../domain/entities/user.dart';
 import '../../core/api/api_endpoints.dart';
 import '../../core/services/notification_service.dart';
@@ -66,37 +67,87 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
   final NotificationService _notificationService;
 
   AuthNotifier(this._repository, this._notificationService)
-    : super(const AsyncValue.loading()) {
-    checkAuthStatus();
+    : super(_restoreSession(_repository)) {
+    if (state.asData?.value != null) {
+      _notificationService.syncToken();
+    }
+    _bootstrapSession();
+  }
+
+  static AsyncValue<User?> _restoreSession(AuthRepository repository) {
+    try {
+      if (!repository.hasToken) {
+        return const AsyncValue.data(null);
+      }
+      final user = repository.getCurrentUser();
+      if (user != null) {
+        return AsyncValue.data(user);
+      }
+      // Token is still valid locally; keep the session instead of logging out.
+      return AsyncValue.data(
+        const UserModel(
+          id: 'cached',
+          email: '',
+          name: 'Student',
+        ),
+      );
+    } catch (e, st) {
+      debugPrint('AuthNotifier: Failed to restore session: $e');
+      return AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> _bootstrapSession() async {
+    if (!_repository.hasToken) {
+      return;
+    }
+
+    try {
+      final user = await _repository.fetchCurrentUser();
+      if (!mounted) return;
+
+      if (user != null) {
+        state = AsyncValue.data(user);
+        await _notificationService.syncToken();
+      } else if (!_repository.hasToken) {
+        state = const AsyncValue.data(null);
+      }
+    } catch (e, st) {
+      debugPrint('AuthNotifier: Session bootstrap failed: $e');
+      if (!mounted) return;
+      if (!_repository.hasToken) {
+        state = const AsyncValue.data(null);
+      } else if (state.asData?.value == null) {
+        state = AsyncValue.error(e, st);
+      }
+    }
   }
 
   Future<void> checkAuthStatus() async {
     debugPrint('AuthNotifier: Initializing...');
     try {
-      final isLoggedIn = await _repository.checkAuthStatus();
-      debugPrint('AuthNotifier: checkAuthStatus result: $isLoggedIn');
+      if (!_repository.hasToken) {
+        state = const AsyncValue.data(null);
+        return;
+      }
 
-      if (isLoggedIn) {
-        final user = _repository.getCurrentUser();
+      final user = await _repository.fetchCurrentUser();
+      if (!mounted) return;
 
-        if (user != null) {
-          state = AsyncValue.data(user);
-          debugPrint('AuthNotifier: State updated to authenticated user');
-          _notificationService.syncToken();
-        } else {
-          debugPrint(
-            'AuthNotifier: User data is null despite token existence. Clearing auth.',
-          );
-          await _repository.logout();
-          state = const AsyncValue.data(null);
-        }
+      if (user != null) {
+        state = AsyncValue.data(user);
+        await _notificationService.syncToken();
       } else {
-        debugPrint('AuthNotifier: Not logged in');
         state = const AsyncValue.data(null);
       }
     } catch (e, st) {
       debugPrint('AuthNotifier: Init failed: $e');
-      state = AsyncValue.error(e, st);
+      if (!mounted) return;
+      if (!_repository.hasToken) {
+        state = const AsyncValue.data(null);
+      } else {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 

@@ -38,14 +38,25 @@ class RouteConstants {
   }
   static String paymentPath(String id) => '/payment/$id';
   static String paymentProgressPath(String id) => '/payment-progress/$id';
-  static String resetPasswordPath({String? token}) {
-    if (token == null || token.trim().isEmpty) {
+  static String resetPasswordPath({String? email, String? devOtp}) {
+    final queryParameters = <String, String>{};
+    final trimmedEmail = email?.trim();
+    final trimmedOtp = devOtp?.trim();
+
+    if (trimmedEmail != null && trimmedEmail.isNotEmpty) {
+      queryParameters['email'] = trimmedEmail;
+    }
+    if (trimmedOtp != null && trimmedOtp.isNotEmpty) {
+      queryParameters['devOtp'] = trimmedOtp;
+    }
+
+    if (queryParameters.isEmpty) {
       return resetPassword;
     }
 
     return Uri(
       path: resetPassword,
-      queryParameters: {'token': token.trim()},
+      queryParameters: queryParameters,
     ).toString();
   }
 

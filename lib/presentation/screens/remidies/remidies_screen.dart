@@ -8,6 +8,8 @@ import 'package:vastuarunsharma/domain/providers/remidies/remidies_providers.dar
 import 'package:vastuarunsharma/presentation/screens/remidies/cart_screen.dart';
 import 'package:vastuarunsharma/presentation/screens/remidies/product_detail_screen.dart';
 
+bool isRemidiesShopOpeningSoon() => true ;
+
 class RemidiesScreen extends ConsumerStatefulWidget {
   const RemidiesScreen({super.key});
 
@@ -30,20 +32,46 @@ class _RemidiesScreenState extends ConsumerState<RemidiesScreen> {
     });
   }
 
+  Future<void> _onRefresh() async {
+    final categoryId = ref.read(selectedCategoryIdProvider);
+    await Future.wait([
+      ref.refresh(categoriesProvider.future),
+      ref.refresh(
+        productsProvider((page: 1, limit: 50, categoryId: categoryId)).future,
+      ),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final topInset = MediaQuery.viewPaddingOf(context).top;
+
+    if (isRemidiesShopOpeningSoon()) {
+      return Scaffold(
+        backgroundColor: _background,
+        body: Padding(
+          padding: EdgeInsets.only(top: topInset),
+          child: const Center(
+            child: Text(
+              'Shop opening soon...',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                color: _onBackground,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     final categoriesAsync = ref.watch(categoriesProvider);
     final cartItemCount = ref.watch(cartItemCountProvider);
     final selectedCategoryId = ref.watch(selectedCategoryIdProvider);
     final productsAsync = ref.watch(
-      productsProvider((
-        page: 1,
-        limit: 50,
-        categoryId: selectedCategoryId,
-      )),
+      productsProvider((page: 1, limit: 50, categoryId: selectedCategoryId)),
     );
-
-    final topInset = MediaQuery.viewPaddingOf(context).top;
 
     return Scaffold(
       backgroundColor: _background,
@@ -53,15 +81,38 @@ class _RemidiesScreenState extends ConsumerState<RemidiesScreen> {
           children: [
             _buildAppBar(context, cartItemCount),
             Expanded(
-              child: categoriesAsync.when(
-                data: (categories) => _buildContent(
-                  categories: categories,
-                  selectedCategoryId: selectedCategoryId,
-                  productsAsync: productsAsync,
+              child: RefreshIndicator(
+                color: _primary,
+                onRefresh: _onRefresh,
+                child: categoriesAsync.when(
+                  data: (categories) => _buildContent(
+                    categories: categories,
+                    selectedCategoryId: selectedCategoryId,
+                    productsAsync: productsAsync,
+                  ),
+                  loading: () => const CustomScrollView(
+                    physics: AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(
+                          child: CircularProgressIndicator(color: _primary),
+                        ),
+                      ),
+                    ],
+                  ),
+                  error: (e, st) => const CustomScrollView(
+                    physics: AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(
+                          child: Text('Error loading categories'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, st) =>
-                    const Center(child: Text('Error loading categories')),
               ),
             ),
           ],
@@ -99,9 +150,9 @@ class _RemidiesScreenState extends ConsumerState<RemidiesScreen> {
             children: [
               IconButton(
                 onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const CartScreen()),
-                  );
+                  Navigator.of(
+                    context,
+                  ).push(MaterialPageRoute(builder: (_) => const CartScreen()));
                 },
                 icon: const Icon(
                   Icons.shopping_cart_outlined,
@@ -146,6 +197,7 @@ class _RemidiesScreenState extends ConsumerState<RemidiesScreen> {
     required AsyncValue<Map<String, dynamic>> productsAsync,
   }) {
     return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
@@ -419,13 +471,15 @@ class _HomeProductCard extends ConsumerWidget {
                               : () async {
                                   try {
                                     await ref.read(
-                                      addToCartProvider
-                                          .call((product.id, 1))
-                                          .future,
+                                      addToCartProvider.call((
+                                        product.id,
+                                        1,
+                                      )).future,
                                     );
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
                                           content: Text('Added to cart'),
                                         ),
@@ -433,13 +487,15 @@ class _HomeProductCard extends ConsumerWidget {
                                     }
                                   } catch (e) {
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
                                           content: Text(
-                                            e
-                                                .toString()
-                                                .replaceFirst('Exception: ', ''),
+                                            e.toString().replaceFirst(
+                                              'Exception: ',
+                                              '',
+                                            ),
                                           ),
                                         ),
                                       );

@@ -12,18 +12,28 @@ class UserModel extends User {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    String asString(dynamic value, [String fallback = '']) {
+      if (value == null) return fallback;
+      final text = value.toString().trim();
+      return text.isEmpty ? fallback : text;
+    }
+
+    List<String> asStringList(dynamic value) {
+      if (value is! List) return const [];
+      return value.map((e) => e.toString()).toList();
+    }
+
     return UserModel(
-      id: json['id'] as String,
-      email: json['email'] as String,
-      name: json['name'] as String,
-      role: json['role'] as String? ?? 'student',
+      id: asString(json['id'] ?? json['_id']),
+      email: asString(json['email']),
+      name: asString(json['name'], 'Student'),
+      role: asString(json['role'], 'student'),
       profileImage: json['profileImage'] as String?,
-      mobileNumber: (json['phoneNumber'] ?? json['mobileNumber']) as String?,
-      enrolledCourseIds:
-          (json['enrolledCourseIds'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          [],
+      mobileNumber: () {
+        final phone = asString(json['phoneNumber'] ?? json['mobileNumber']);
+        return phone.isEmpty ? null : phone;
+      }(),
+      enrolledCourseIds: asStringList(json['enrolledCourseIds']),
     );
   }
 

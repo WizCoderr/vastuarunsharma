@@ -11,9 +11,10 @@ final myCouponsProvider = FutureProvider<List<Coupon>>((ref) async {
 
 // Student: validate a coupon code on demand
 final validateCouponProvider =
-    FutureProvider.family<Map<String, dynamic>, String>((ref, code) async {
+    FutureProvider.family<Map<String, dynamic>, ({String code, String? phone})>(
+        (ref, args) async {
   final repo = ref.read(remidiesRepositoryProvider);
-  return repo.validateCoupon(code);
+  return repo.validateCoupon(args.code, phoneNumber: args.phone);
 });
 
 // Admin: all coupons list

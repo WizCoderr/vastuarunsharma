@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/route_constants.dart';
 import '../../presentation/providers/live_class_provider.dart';
 import '../../presentation/providers/course_provider.dart';
@@ -222,10 +223,13 @@ class NotificationService {
   // Sync token with backend
   Future<void> syncToken() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final authToken = prefs.getString('auth_token');
+      if (authToken == null || authToken.isEmpty) return;
+
       final token = await getDeviceToken();
       if (token != null) {
         debugPrint("FCM Token: $token");
-        // Ensure Dio is ready before accessing repository
         await _ref.read(dioClientProvider.future);
         await _ref.read(liveClassRepositoryProvider).registerDeviceToken(token);
       }
