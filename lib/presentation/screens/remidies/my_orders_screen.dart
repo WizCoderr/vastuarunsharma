@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:vastuarunsharma/core/constants/route_constants.dart';
 import 'package:vastuarunsharma/data/models/remidies/order.dart';
 import 'package:vastuarunsharma/data/models/remidies/payment.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/order_providers.dart';
@@ -150,6 +152,18 @@ class _OrderCardState extends State<_OrderCard> {
                     ),
                   ],
                 ),
+              ),
+            ),
+          ],
+          if (order.status == OrderStatus.pending) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  context.push(RouteConstants.remediesPaymentPath, extra: order.id);
+                },
+                child: const Text('Retry Payment'),
               ),
             ),
           ],

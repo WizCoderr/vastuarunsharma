@@ -2,7 +2,7 @@ import '../../shared/utils/either.dart';
 import '../../core/errors/failures.dart';
 import '../datasources/remote/payment_remote_datasource.dart';
 import '../models/response/order_response.dart';
-import '../models/response/student_payment_model.dart';
+import '../models/response/upi_payment_response.dart';
 
 class PaymentRepository {
   final PaymentRemoteDataSource remoteDataSource;
@@ -82,6 +82,48 @@ class PaymentRepository {
     try {
       final success = await remoteDataSource.freeEnroll(courseId);
       return Right(success);
+    } catch (e) {
+      return Left(NetworkFailure(e.toString()));
+    }
+  }
+
+  Future<Either<Failure, UpiPaymentResponse>> createRemediesUpiPayment(
+    String orderId,
+  ) async {
+    try {
+      final payment = await remoteDataSource.createRemediesUpiPayment(orderId);
+      return Right(payment);
+    } catch (e) {
+      return Left(NetworkFailure(e.toString()));
+    }
+  }
+
+  Future<Either<Failure, UpiPaymentResponse>> createCourseUpiPayment(
+    String courseId,
+  ) async {
+    try {
+      final payment = await remoteDataSource.createCourseUpiPayment(courseId);
+      return Right(payment);
+    } catch (e) {
+      return Left(NetworkFailure(e.toString()));
+    }
+  }
+
+  Future<Either<Failure, PaymentStatusResponse>> getPaymentStatus(
+    String transactionId,
+  ) async {
+    try {
+      final status = await remoteDataSource.getPaymentStatus(transactionId);
+      return Right(status);
+    } catch (e) {
+      return Left(NetworkFailure(e.toString()));
+    }
+  }
+
+  Future<Either<Failure, void>> verifyUpiPayment(String transactionId) async {
+    try {
+      await remoteDataSource.verifyUpiPayment(transactionId);
+      return const Right(null);
     } catch (e) {
       return Left(NetworkFailure(e.toString()));
     }

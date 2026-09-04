@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart'; // for debugPrint
 import 'package:flutter_riverpod/legacy.dart';
 import '../../data/datasources/remote/payment_remote_datasource.dart';
 import '../../data/repositories/payment_repository.dart';
+import '../../data/models/response/upi_payment_response.dart';
 import 'course_provider.dart';
 
 import '../../data/models/response/student_payment_model.dart';
@@ -47,81 +48,55 @@ class PaymentController extends StateNotifier<AsyncValue<void>> {
 
   PaymentController(this._repository) : super(const AsyncValue.data(null));
 
-  Future<Map<String, dynamic>?> createRemediesOrder(String orderId) async {
-    if (orderId.trim().isEmpty) {
-      debugPrint(
-          'PaymentController: createRemediesOrder called with empty orderId');
-      throw Exception('orderId is required');
-    }
+  Future<UpiPaymentResponse> createRemediesUpiPayment(String orderId) async {
+    if (orderId.trim().isEmpty) throw Exception('orderId is required');
 
     state = const AsyncValue.loading();
-    debugPrint("PaymentController: creating order for remedy $orderId");
-
-    final result = await _repository.createRemediesOrder(orderId);
+    final result = await _repository.createRemediesUpiPayment(orderId);
 
     return result.fold(
       (failure) {
-        debugPrint(
-            "PaymentController: createRemediesOrder failed: ${failure.message}");
         state = AsyncValue.error(failure.message, StackTrace.current);
         throw Exception(failure.message);
       },
-      (order) {
-        debugPrint(
-            "PaymentController: createRemediesOrder success: ${order.id}");
+      (payment) {
         state = const AsyncValue.data(null);
-        return {
-          'id': order.id,
-          'amount': order.amount,
-          'currency': order.currency,
-          'key': order.key,
-          'description': 'Remedy Purchase',
-        };
+        return payment;
       },
     );
   }
 
-  Future<bool> verifyRemediesPayment({
-    required String razorpayOrderId,
-    required String razorpayPaymentId,
-    required String razorpaySignature,
-    required String orderId,
-  }) async {
-    if (razorpayOrderId.trim().isEmpty ||
-        razorpayPaymentId.trim().isEmpty ||
-        razorpaySignature.trim().isEmpty ||
-        orderId.trim().isEmpty) {
-      debugPrint(
-        'PaymentController: verifyRemediesPayment called with incomplete details -> order:$razorpayOrderId payment:$razorpayPaymentId signature:$razorpaySignature orderId:$orderId',
-      );
-      throw Exception('Incomplete payment details');
-    }
+  Future<UpiPaymentResponse> createCourseUpiPayment(String courseId) async {
+    if (courseId.trim().isEmpty) throw Exception('courseId is required');
 
     state = const AsyncValue.loading();
-    debugPrint(
-      "PaymentController: verifying payment $razorpayPaymentId for remedy order $orderId",
-    );
-
-    final result = await _repository.verifyRemediesPayment(
-      razorpayOrderId: razorpayOrderId,
-      razorpayPaymentId: razorpayPaymentId,
-      razorpaySignature: razorpaySignature,
-      orderId: orderId,
-    );
+    final result = await _repository.createCourseUpiPayment(courseId);
 
     return result.fold(
       (failure) {
-        debugPrint(
-          "PaymentController: verifyRemediesPayment failed: ${failure.message}",
-        );
         state = AsyncValue.error(failure.message, StackTrace.current);
         throw Exception(failure.message);
       },
-      (success) {
-        debugPrint("PaymentController: verifyRemediesPayment success");
+      (payment) {
         state = const AsyncValue.data(null);
-        return success;
+        return payment;
       },
+    );
+  }
+
+  Future<PaymentStatusResponse> getPaymentStatus(String transactionId) async {
+    final result = await _repository.getPaymentStatus(transactionId);
+    return result.fold(
+      (failure) => throw Exception(failure.message),
+      (status) => status,
+    );
+  }
+
+  Future<void> verifyUpiPayment(String transactionId) async {
+    final result = await _repository.verifyUpiPayment(transactionId);
+    result.fold(
+      (failure) => throw Exception(failure.message),
+      (_) => null,
     );
   }
 

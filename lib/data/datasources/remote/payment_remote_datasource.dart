@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../../models/response/api_response.dart';
 import '../../models/response/order_response.dart';
 import '../../models/response/student_payment_model.dart';
+import '../../models/response/upi_payment_response.dart';
 import '../../../core/api/dio_client.dart';
 import '../../../core/api/api_endpoints.dart';
 
@@ -42,6 +43,54 @@ class PaymentRemoteDataSource {
       debugPrint('CreateOrder unexpected error: $e');
       rethrow;
     }
+  }
+
+  Future<UpiPaymentResponse> createRemediesUpiPayment(String orderId) async {
+    final resp = await client.post(
+      ApiEndpoints.remediesOrder,
+      data: {'orderId': orderId},
+    );
+    return _parseUpiResponse(resp.data);
+  }
+
+  Future<UpiPaymentResponse> createCourseUpiPayment(String courseId) async {
+    final resp = await client.post(
+      ApiEndpoints.courseOrder,
+      data: {'courseId': courseId},
+    );
+    return _parseUpiResponse(resp.data);
+  }
+
+  Future<PaymentStatusResponse> getPaymentStatus(String transactionId) async {
+    final resp = await client.get(ApiEndpoints.paymentStatus(transactionId));
+    return _parseStatusResponse(resp.data);
+  }
+
+  Future<void> verifyUpiPayment(String transactionId) async {
+    await client.post(
+      ApiEndpoints.verifyPayment,
+      data: {'transactionId': transactionId},
+    );
+  }
+
+  UpiPaymentResponse _parseUpiResponse(dynamic body) {
+    if (body is Map<String, dynamic>) {
+      if (body.containsKey('data') && body['data'] is Map<String, dynamic>) {
+        return UpiPaymentResponse.fromJson(body['data'] as Map<String, dynamic>);
+      }
+      return UpiPaymentResponse.fromJson(body);
+    }
+    throw Exception('Invalid UPI payment response');
+  }
+
+  PaymentStatusResponse _parseStatusResponse(dynamic body) {
+    if (body is Map<String, dynamic>) {
+      if (body.containsKey('data') && body['data'] is Map<String, dynamic>) {
+        return PaymentStatusResponse.fromJson(body['data'] as Map<String, dynamic>);
+      }
+      return PaymentStatusResponse.fromJson(body);
+    }
+    throw Exception('Invalid payment status response');
   }
 
   Future<OrderResponse> createRemediesOrder(String orderId) async {

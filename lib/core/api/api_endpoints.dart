@@ -47,6 +47,12 @@ class ApiEndpoints {
   static const String remediesOrder = '/api/payments/remidies/order';
   static const String remediesVerify = '/api/payments/remidies/verify';
   static const String freeEnroll = '/api/payments/free-enroll';
+  static const String createPayment = '/api/payments/create';
+  static const String verifyPayment = '/api/payments/verify';
+  static String paymentStatus(String transactionId) =>
+      '/api/payments/status/$transactionId';
+  static const String paymentHistory = '/api/payments/history';
+  static const String authRefresh = '/auth/refresh';
 
   // Remidies public catalog (no auth)
   static const String remidiesCategories = '/api/public/remidies/categories';

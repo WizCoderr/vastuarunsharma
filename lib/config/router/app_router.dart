@@ -22,6 +22,7 @@ import '../../presentation/screens/landing/landing_screen.dart';
 import '../../presentation/screens/payment/payment_progress_screen.dart';
 import '../../presentation/screens/payment/payment_screen.dart';
 import '../../presentation/screens/payment/remedies_payment_screen.dart';
+import '../../presentation/screens/remidies/my_orders_screen.dart';
 import '../../presentation/screens/admin/remidies/admin_bulk_tiers_screen.dart';
 import '../../presentation/screens/admin/remidies/admin_coupons_screen.dart';
 import '../../presentation/screens/pdf/pdf_viewer_screen.dart';
@@ -178,6 +179,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           final courseId = state.pathParameters['courseId'] ?? '';
           return CheckoutScreen(courseId: courseId);
         },
+        redirect: (context, state) {
+          if (!isLoggedIn()) {
+            return '${RouteConstants.login}?returnUrl=${state.matchedLocation}';
+          }
+          return null;
+        },
+      ),
+      GoRoute(
+        path: RouteConstants.ordersPath,
+        builder: (context, state) => const MyOrdersScreen(),
         redirect: (context, state) {
           if (!isLoggedIn()) {
             return '${RouteConstants.login}?returnUrl=${state.matchedLocation}';

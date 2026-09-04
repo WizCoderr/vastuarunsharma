@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../../core/constants/route_constants.dart';
-import '../../providers/auth_provider.dart';
+import '../../../data/models/response/upi_payment_response.dart';
 import '../../providers/course_provider.dart';
 import '../../providers/payment_provider.dart';
 import '../../providers/refresh_provider.dart';
+import 'upi_payment_screen.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   final String courseId;
@@ -17,141 +17,7 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 }
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
-  late Razorpay _razorpay;
-  String? _currentOrderId;
-
-  @override
-  void initState() {
-    super.initState();
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
-  }
-
-  @override
-  void dispose() {
-    _razorpay.clear();
-    super.dispose();
-  }
-
-  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
-    // Prefer razorpay's returned orderId if present; fall back to our stored order id
-    final razorpayOrderId = response.orderId;
-    final paymentId = response.paymentId;
-    final signature = response.signature;
-
-    debugPrint(
-      'PaymentSuccessResponse: orderId=$razorpayOrderId, paymentId=$paymentId, signature=$signature',
-    );
-    debugPrint('Stored order id: $_currentOrderId');
-
-    final finalOrderId = razorpayOrderId ?? _currentOrderId;
-
-    if (finalOrderId == null || paymentId == null || signature == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Verification Failed: Missing payment details from gateway',
-            ),
-          ),
-        );
-      }
-      return;
-    }
-    try {
-      final success = await ref
-          .read(paymentControllerProvider.notifier)
-          .verifyPayment(
-            razorpayOrderId: finalOrderId,
-            razorpayPaymentId: paymentId,
-            razorpaySignature: signature,
-            courseId: widget.courseId,
-          );
-
-      if (success != null && mounted) {
-        // Refresh course providers to update enrollment status
-        ref.refreshAfterEnrollment();
-        ref.refreshCourseDetails(widget.courseId);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Payment Successful! Enrolling...")),
-        );
-        // Navigate to Enrollment/Success Screen
-        context.go(RouteConstants.enrollmentPath(widget.courseId));
-      }
-    } catch (e) {
-      debugPrint('Payment verification error: $e');
-      if (mounted) {
-        final message = e.toString();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Verification Failed: $message")),
-        );
-      }
-    }
-  }
-
-  void _handlePaymentError(PaymentFailureResponse response) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Payment Failed: ${response.message}")),
-    );
-  }
-
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("External Wallet Selected: ${response.walletName}"),
-      ),
-    );
-  }
-
-  Future<void> _startPayment(double amount) async {
-    try {
-      // Check for free course
-      if (amount <= 0) {
-        await _handleFreeEnrollment();
-        return;
-      }
-
-      final orderData = await ref
-          .read(paymentControllerProvider.notifier)
-          .createOrder(widget.courseId);
-
-      if (orderData != null) {
-        _currentOrderId = orderData['id'];
-
-        // Heuristic: If backend returns amount in Rupees (e.g. 500) instead of Paise (50000),
-        // we correct it here. Expected Paise is roughly amount * 100.
-        // If the returned value is close to 'amount' (Rupees) vs 'amount * 100' (Paise),
-        // we multiply by 100.
-        var paymentAmount = orderData['amount'];
-        if (paymentAmount is num && paymentAmount < (amount * 50)) {
-          paymentAmount = (paymentAmount * 100).round();
-        }
-
-        final user = ref.read(authStateProvider).value;
-        var options = {
-          'key': orderData['key'],
-          'amount': paymentAmount,
-          'name': 'Vastu Arun Sharma',
-          'description': orderData['description'],
-          'order_id': orderData['id'],
-          'timeout': 120,
-          'prefill': {
-            'contact': user?.mobileNumber ?? '',
-            'email': user?.email ?? '',
-          },
-        };
-        _razorpay.open(options);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to initiate payment: $e")));
-    }
-  }
+  UpiPaymentResponse? _upiPayment;
 
   Future<void> _handleFreeEnrollment() async {
     try {
@@ -162,23 +28,68 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       if (success && mounted) {
         ref.refreshAfterEnrollment();
         ref.refreshCourseDetails(widget.courseId);
-
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Enrollment Successful!")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Enrollment Successful!')),
+        );
         context.go(RouteConstants.enrollmentPath(widget.courseId));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Enrollment Failed: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Enrollment Failed: $e')),
+        );
       }
+    }
+  }
+
+  Future<void> _startPayment(double amount) async {
+    try {
+      if (amount <= 0) {
+        await _handleFreeEnrollment();
+        return;
+      }
+
+      final payment = await ref
+          .read(paymentControllerProvider.notifier)
+          .createCourseUpiPayment(widget.courseId);
+
+      if (mounted) setState(() => _upiPayment = payment);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to initiate payment: $e')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_upiPayment != null) {
+      return UpiPaymentScreen(
+        payment: _upiPayment!,
+        onPollStatus: (txnId) => ref
+            .read(paymentControllerProvider.notifier)
+            .getPaymentStatus(txnId),
+        onVerify: (txnId) => ref
+            .read(paymentControllerProvider.notifier)
+            .verifyUpiPayment(txnId),
+        onSuccess: () {
+          ref.refreshAfterEnrollment();
+          ref.refreshCourseDetails(widget.courseId);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Payment Successful! Enrolling...')),
+          );
+          context.go(RouteConstants.enrollmentPath(widget.courseId));
+        },
+        onFailure: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Payment failed. Please retry.')),
+          );
+          setState(() => _upiPayment = null);
+        },
+      );
+    }
+
     final courseAsync = ref.watch(courseDetailsProvider(widget.courseId));
     final paymentState = ref.watch(paymentControllerProvider);
 
@@ -187,9 +98,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final displayPrice = activePlan?.amount ?? course?.price ?? 0.0;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Consistent bg
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text("Complete Purchase"),
+        title: const Text('Complete Purchase'),
         elevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.black,
@@ -201,7 +112,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                "Order Summary",
+                'Order Summary',
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
               ),
               const SizedBox(height: 16),
@@ -212,7 +123,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(.05),
+                      color: Colors.black.withValues(alpha: .05),
                       blurRadius: 10,
                     ),
                   ],
@@ -236,21 +147,19 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                               child: Text(
                                 activePlan.stageName,
                                 style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.secondary,
+                                  color: Theme.of(context).colorScheme.secondary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           const SizedBox(height: 8),
                           Text(
-                            "Lifetime Access",
+                            'Lifetime Access',
                             style: TextStyle(color: Colors.grey.shade700),
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            "₹${displayPrice.toStringAsFixed(0)}",
+                            '₹${displayPrice.toStringAsFixed(0)}',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 20,
@@ -259,29 +168,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: course.thumbnail.isNotEmpty
-                          ? Image.network(
-                              course.thumbnail,
-                              height: 80,
-                              width: 80,
-                              fit: BoxFit.cover,
-                              errorBuilder: (c, o, s) => Container(
-                                height: 80,
-                                width: 80,
-                                color: Colors.grey[200],
-                                child: const Icon(Icons.image_not_supported),
-                              ),
-                            )
-                          : Container(
-                              height: 80,
-                              width: 80,
-                              color: Colors.grey[200],
-                              child: const Icon(Icons.image),
-                            ),
                     ),
                   ],
                 ),
@@ -293,7 +179,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               const SizedBox(height: 16),
               const Center(
                 child: Text(
-                  "Safe & Secure Payment via Razorpay",
+                  'Safe & Secure Payment via UPI',
                   style: TextStyle(color: Colors.grey),
                 ),
               ),
@@ -301,7 +187,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           ),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text("Error: $e")),
+        error: (e, _) => Center(child: Text('Error: $e')),
       ),
       bottomNavigationBar: courseAsync.hasValue
           ? Container(
@@ -313,9 +199,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               child: ElevatedButton(
                 onPressed: paymentState.isLoading
                     ? null
-                    : () {
-                        _startPayment(displayPrice);
-                      },
+                    : () => _startPayment(displayPrice),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -333,7 +217,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                         ),
                       )
                     : Text(
-                        displayPrice <= 0 ? "Enroll Now" : "Pay Now",
+                        displayPrice <= 0 ? 'Enroll Now' : 'Pay via UPI',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
