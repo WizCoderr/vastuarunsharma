@@ -1,5 +1,5 @@
--keep class com.razorpay.** { *; }
--dontwarn com.razorpay.**
+-keep class com.payu.** { *; }
+-dontwarn com.payu.**
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }

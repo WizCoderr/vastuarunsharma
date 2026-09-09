@@ -197,7 +197,7 @@ class _TierTile extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: tier.type == BulkTierType.QUANTITY
+                    color: tier.type == BulkTierType.quantity
                         ? const Color(0xFF985000).withValues(alpha: 0.1)
                         : const Color(0xFFD7A417).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),
@@ -207,7 +207,7 @@ class _TierTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: tier.type == BulkTierType.QUANTITY
+                      color: tier.type == BulkTierType.quantity
                           ? const Color(0xFF985000)
                           : const Color(0xFFB3860B),
                     ),
@@ -232,7 +232,7 @@ class _TierTile extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              tier.type == BulkTierType.QUANTITY
+              tier.type == BulkTierType.quantity
                   ? 'Min. ${tier.minThreshold.toInt()} items required'
                   : 'Min. ₹${_fmt(tier.minThreshold)} order value',
               style: const TextStyle(color: Colors.grey, fontSize: 12),

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/services/payu_checkout_flow.dart';
+import '../../../core/services/payu_checkout_service.dart';
 import '../../providers/payment_provider.dart';
 import '../../../data/models/response/student_payment_model.dart';
 import '../../widgets/glass_container.dart';
@@ -37,7 +38,6 @@ class PaymentProgressScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              // Progress Card
               GlassContainer(
                 padding: const EdgeInsets.all(20),
                 borderRadius: 16,
@@ -70,8 +70,17 @@ class PaymentProgressScreen extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text("Paid: ₹${totalPaid.toStringAsFixed(0)}", style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
-                        Text("Total: ₹${totalAmount.toStringAsFixed(0)}", style: const TextStyle(color: Colors.grey)),
+                        Text(
+                          "Paid: ₹${totalPaid.toStringAsFixed(0)}",
+                          style: const TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          "Total: ₹${totalAmount.toStringAsFixed(0)}",
+                          style: const TextStyle(color: Colors.grey),
+                        ),
                       ],
                     ),
                   ],
@@ -82,7 +91,13 @@ class PaymentProgressScreen extends ConsumerWidget {
                 "Payment History",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 16),              ...payments.map((p) => _PaymentTile(payment: p)),
+              const SizedBox(height: 16),
+              ...payments.map(
+                (p) => _PaymentTile(
+                  payment: p,
+                  onPay: () => _payInstallment(context, ref, p),
+                ),
+              ),
             ],
           );
         },
@@ -91,11 +106,62 @@ class PaymentProgressScreen extends ConsumerWidget {
       ),
     );
   }
+
+  Future<void> _payInstallment(
+    BuildContext context,
+    WidgetRef ref,
+    StudentPaymentModel payment,
+  ) async {
+    try {
+      final controller = ref.read(paymentControllerProvider.notifier);
+      final params = await controller.createInstallmentOrder(payment.id);
+
+      await PayuCheckoutFlow.run(
+        params: params,
+        generateHashFn: ({
+          required String txnid,
+          required String hashName,
+          String? hashString,
+          String? hashType,
+          String? postSalt,
+        }) =>
+            controller.generatePayuHash(
+              txnid: txnid,
+              hashName: hashName,
+              hashString: hashString,
+              hashType: hashType,
+              postSalt: postSalt,
+            ),
+        waitForFulfillment: controller.waitForPayuFulfillment,
+      );
+
+      if (!context.mounted) return;
+      ref.invalidate(studentCoursePaymentsProvider(courseId));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Installment paid successfully')),
+      );
+    } on PayuCheckoutCancelledException {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment cancelled')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Payment failed: ${e.toString().replaceFirst('Exception: ', '')}',
+          ),
+        ),
+      );
+    }
+  }
 }
 
 class _PaymentTile extends StatelessWidget {
   final StudentPaymentModel payment;
-  const _PaymentTile({required this.payment});
+  final VoidCallback onPay;
+  const _PaymentTile({required this.payment, required this.onPay});
 
   @override
   Widget build(BuildContext context) {
@@ -149,9 +215,7 @@ class _PaymentTile extends StatelessWidget {
               ),
               if (!isPaid)
                 TextButton(
-                  onPressed: () {
-                    context.push('/payment/${payment.courseId}');
-                  },
+                  onPressed: onPay,
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                     foregroundColor: Theme.of(context).colorScheme.primary,

@@ -1,6 +1,6 @@
 # Android shop (products) API reference
 
-Shop (remedies/products) APIs for the customer Android app. Catalog is public; cart, checkout, and orders require a student JWT; payments go through Razorpay.
+Shop (remedies/products) APIs for the customer Android app. Catalog is public; cart, checkout, and orders require a student JWT; payments go through PayU Checkout Pro.
 
 **Base URL**
 
@@ -18,7 +18,7 @@ Shop routes return:
 { "success": true, "data": ... }
 ```
 
-Unwrap `data` on success. On failure read `error` or `message`. Auth uses the same shape. Razorpay **create order** returns the payment payload **without** the `{ success, data }` wrap.
+Unwrap `data` on success. On failure read `error` or `message`. Auth uses the same shape. PayU **create order** returns the Hosted Checkout / CheckoutPro payload (often without the `{ success, data }` wrap).
 
 **Auth header**
 
@@ -49,8 +49,8 @@ sequenceDiagram
   App->>Auth: POST checkout with shipping
   Auth-->>App: DB order id
   App->>Pay: POST remidies/order
-  Pay-->>App: Razorpay orderId amount keyId
-  App->>Pay: POST remidies/verify
+  Pay-->>App: PayU key txnid amount hash environment
+  App->>Pay: POST payu/hash (SDK) then GET payu/status/:txnid
 ```
 
 ---
@@ -312,7 +312,7 @@ Creates a DB order, clears the cart, and decrements stock.
 }
 ```
 
-Use **`data.order.id`** as the database order id for Razorpay. Order status starts as `PENDING`. Cart is emptied immediately — persist this id until payment verify succeeds.
+Use **`data.order.id`** as the database order id for PayU. Order status starts as `PENDING`. Cart is emptied immediately — persist this id until payment verify succeeds.
 
 ### Orders
 
@@ -324,53 +324,66 @@ Relevant statuses include `PENDING`, `PAID`, plus admin-updated fulfillment stat
 
 ---
 
-## 4. Product payment (Razorpay)
+## 4. Product payment (PayU)
 
 Same flow as the website cart checkout.
 
-### Step 1 — Create Razorpay order
+### Step 1 — Create PayU order
 
 `POST /api/payments/remidies/order`
 
 ```json
-{ "orderId": "<data.order.id from checkout>" }
+{ "orderId": "<data.order.id from checkout>", "channel": "app" }
 ```
 
-**Response (unwrapped):**
+**Response (unwrapped — PayU Checkout Pro / Hosted Checkout params):**
 
 ```json
 {
-  "orderId": "order_RazorpayId",
-  "amount": 149900,
-  "currency": "INR",
-  "keyId": "rzp_..."
+  "key": "<merchant-key>",
+  "txnid": "ord…",
+  "amount": "499.00",
+  "productinfo": "Order …",
+  "firstname": "Customer",
+  "email": "user@example.com",
+  "phone": "9999999999",
+  "surl": "https://api…/api/payments/payu/callback",
+  "furl": "https://api…/api/payments/payu/callback",
+  "hash": "<sha512 payment hash>",
+  "paymentUrl": "https://test.payu.in/_payment",
+  "environment": "1",
+  "udf1": "app",
+  "udf2": "PRODUCT",
+  "udf3": "<shopOrderId>",
+  "udf4": "<userId>",
+  "udf5": "",
+  "shopOrderId": "<data.order.id>"
 }
 ```
 
 | Field | Meaning |
 |---|---|
-| `orderId` | **Razorpay** order id (not the DB order id) |
-| `amount` | Amount in **paise** |
-| `keyId` | Razorpay key for Checkout / Android SDK |
+| `txnid` | PayU transaction id (also stored as `merchantTxnRef`) |
+| `amount` | Amount in **rupees** as a 2-decimal string (e.g. `"499.00"`) |
+| `key` | PayU merchant key for Checkout Pro / Hosted Checkout |
+| `hash` | Server-generated payment hash |
+| `environment` | `"1"` = test, `"0"` = production |
+| `udf1` | Client channel: `app` or `web` |
+| `surl` / `furl` | PayU success/failure callback URLs |
 
-### Step 2 — Open Razorpay Checkout / Android SDK
+### Step 2 — Open PayU Checkout Pro SDK
 
-Pass `keyId`, Razorpay `orderId`, `amount`, and `currency`.
+Pass `key`, `txnid`, `amount`, `hash`, `environment`, and `surl`/`furl`. Generate dynamic hashes via `POST /api/payments/payu/hash`.
 
-### Step 3 — Verify payment
+### Step 3 — Confirm payment status
 
-`POST /api/payments/remidies/verify`
+After SDK success, poll:
 
-```json
-{
-  "orderId": "<database order uuid>",
-  "razorpay_order_id": "...",
-  "razorpay_payment_id": "...",
-  "razorpay_signature": "..."
-}
-```
+`GET /api/payments/payu/status/:txnid`
 
-**Success:** `{ "success": true, "data": { "success": true, "paymentId": "..." } }` (Result envelope). Order becomes `PAID`.
+(or `POST /api/payments/remidies/verify` with `{ "txnid": "..." }`)
+
+**Success:** status `COMPLETED` / `PAID`. Order becomes `PAID`.
 
 ---
 
@@ -539,18 +552,31 @@ data class CheckoutResult(
     val order: CheckoutOrder,
 )
 
-data class RemediesRazorpayOrder(
-    val orderId: String,   // Razorpay order id
-    val amount: Long,      // paise
-    val currency: String? = "INR",
-    val keyId: String? = null,
+data class RemediesPayuOrder(
+    val key: String,
+    val txnid: String,
+    val amount: String, // rupees, 2 decimals e.g. "499.00"
+    val productinfo: String? = null,
+    val firstname: String? = null,
+    val email: String? = null,
+    val phone: String? = null,
+    val surl: String,
+    val furl: String,
+    val hash: String,
+    val paymentUrl: String? = null,
+    val environment: String = "1", // "1" test, "0" live
+    val udf1: String? = "app",
+    val udf2: String? = null,
+    val udf3: String? = null,
+    val udf4: String? = null,
+    val udf5: String? = null,
+    val shopOrderId: String? = null,
 )
 
 data class RemediesPaymentVerifyRequest(
     val orderId: String, // database order uuid
-    val razorpay_order_id: String,
-    val razorpay_payment_id: String,
-    val razorpay_signature: String,
+    val txnid: String,
+    val mihpayid: String? = null,
 )
 ```
 
@@ -625,8 +651,9 @@ interface StudentShopApi {
 }
 
 interface PaymentsApi {
+    // Body must include orderId + channel=app for Checkout Pro callbacks
     @POST("api/payments/remidies/order")
-    suspend fun createRemediesOrder(@Body body: Map<String, String>): RemediesRazorpayOrder
+    suspend fun createRemediesOrder(@Body body: Map<String, String>): RemediesPayuOrder
 
     @POST("api/payments/remidies/verify")
     suspend fun verifyRemediesPayment(@Body body: RemediesPaymentVerifyRequest): ApiEnvelope<Any>
@@ -666,4 +693,4 @@ Wire Retrofit with `baseUrl` = production or local base URL (trailing `/`), Gson
 | Payments | `src/routes/payment.routes.ts` |
 | Website catalog client | `vastuarunsharma.com/api/public.ts` |
 | Website cart client | `vastuarunsharma.com/api/shop.ts` |
-| Website Razorpay client | `vastuarunsharma.com/api/payments.ts` |
+| Website PayU form POST | `vastuarunsharma.com/api/payu.ts` |

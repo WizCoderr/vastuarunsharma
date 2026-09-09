@@ -93,5 +93,20 @@
 		</array>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<!-- PayU CheckoutPro / UPI intent discovery -->
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>phonepe</string>
+			<string>tez</string>
+			<string>paytmmp</string>
+			<string>credpay</string>
+			<string>bhim</string>
+			<string>upi</string>
+			<string>ppemerchantsdkv1</string>
+			<string>ppemerchantsdkv2</string>
+			<string>ppemerchantsdkv3</string>
+			<string>paytm</string>
+			<string>gpay</string>
+		</array>
 	</dict>
 </plist>

@@ -170,7 +170,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         return;
       }
       ref.invalidate(cartProvider);
-      context.push(RouteConstants.remediesPaymentPath, extra: orderIdStr);
+      context.push(RouteConstants.remediesPaymentPathFor(orderIdStr));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -344,7 +344,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   spacing: 8,
                   runSpacing: 8,
                   children: coupons.map((coupon) {
-                    final label = coupon.discountType == DiscountType.PERCENTAGE
+                    final label = coupon.discountType == DiscountType.percentage
                         ? '${coupon.code} · ${coupon.discountValue.toStringAsFixed(coupon.discountValue == coupon.discountValue.truncateToDouble() ? 0 : 1)}% off'
                         : '${coupon.code} · ₹${coupon.discountValue.toStringAsFixed(0)} off';
                     final isApplied = _appliedCouponCode?.toUpperCase() ==

@@ -14,7 +14,9 @@ class RouteConstants {
   static const String remidies = '/remidies';
   static const String payment = 'payment';
   static const String checkoutPath = '/checkout';
-  static const String remediesPaymentPath = '/remedies-payment';
+  static const String remediesPaymentPath = '/remedies-payment/:orderId';
+  static String remediesPaymentPathFor(String orderId) =>
+      '/remedies-payment/$orderId';
   static const String ordersPath = '/remidies/orders';
 
   // Routes with parameters

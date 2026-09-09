@@ -1,4 +1,4 @@
-enum DiscountType { PERCENTAGE, FIXED }
+enum DiscountType { percentage, fixed }
 
 class Coupon {
   final String id;
@@ -40,8 +40,8 @@ class Coupon {
       id: (json['_id'] ?? json['id'] ?? '').toString(),
       code: (json['code'] ?? '').toString(),
       discountType: json['discountType'] == 'FIXED'
-          ? DiscountType.FIXED
-          : DiscountType.PERCENTAGE,
+          ? DiscountType.fixed
+          : DiscountType.percentage,
       discountValue: _toDouble(json['discountValue']),
       maxUses: (json['maxUses'] as num?)?.toInt() ?? 0,
       usedCount: (json['usedCount'] as num?)?.toInt() ?? 0,
@@ -56,7 +56,8 @@ class Coupon {
 
   Map<String, dynamic> toJson() => {
         'code': code,
-        'discountType': discountType.name,
+        'discountType':
+            discountType == DiscountType.fixed ? 'FIXED' : 'PERCENTAGE',
         'discountValue': discountValue,
         'maxUses': maxUses,
         if (expiresAt != null) 'expiresAt': expiresAt!.toIso8601String(),

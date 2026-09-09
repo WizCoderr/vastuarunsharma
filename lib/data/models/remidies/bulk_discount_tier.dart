@@ -1,4 +1,4 @@
-enum BulkTierType { QUANTITY, VALUE }
+enum BulkTierType { quantity, value }
 
 class BulkDiscountTier {
   final String id;
@@ -18,7 +18,7 @@ class BulkDiscountTier {
   String get label {
     final pct = discountPercent.toStringAsFixed(
         discountPercent == discountPercent.truncateToDouble() ? 0 : 1);
-    if (type == BulkTierType.QUANTITY) {
+    if (type == BulkTierType.quantity) {
       return '$pct% off for ${minThreshold.toInt()}+ items';
     } else {
       return '$pct% off for orders ₹${_fmt(minThreshold)}+';
@@ -28,7 +28,7 @@ class BulkDiscountTier {
   factory BulkDiscountTier.fromJson(Map<String, dynamic> json) {
     return BulkDiscountTier(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
-      type: json['type'] == 'VALUE' ? BulkTierType.VALUE : BulkTierType.QUANTITY,
+      type: json['type'] == 'VALUE' ? BulkTierType.value : BulkTierType.quantity,
       minThreshold: _toDouble(json['minThreshold']),
       discountPercent: _toDouble(json['discountPercent']),
       isActive: json['isActive'] as bool? ?? false,
@@ -36,7 +36,7 @@ class BulkDiscountTier {
   }
 
   Map<String, dynamic> toJson() => {
-        'type': type.name,
+        'type': type == BulkTierType.value ? 'VALUE' : 'QUANTITY',
         'minThreshold': minThreshold,
         'discountPercent': discountPercent,
         'isActive': isActive,

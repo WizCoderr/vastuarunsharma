@@ -5,6 +5,7 @@ import 'package:vastuarunsharma/core/constants/route_constants.dart';
 import 'package:vastuarunsharma/data/models/remidies/order.dart';
 import 'package:vastuarunsharma/data/models/remidies/payment.dart';
 import 'package:vastuarunsharma/domain/providers/remidies/order_providers.dart';
+import 'package:vastuarunsharma/presentation/widgets/add_to_google_wallet_button.dart';
 
 class MyOrdersScreen extends ConsumerWidget {
   const MyOrdersScreen({super.key});
@@ -161,11 +162,18 @@ class _OrderCardState extends State<_OrderCard> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  context.push(RouteConstants.remediesPaymentPath, extra: order.id);
+                  context.push(RouteConstants.remediesPaymentPathFor(order.id));
                 },
                 child: const Text('Retry Payment'),
               ),
             ),
+          ],
+          if (order.status == OrderStatus.paid ||
+              order.status == OrderStatus.processing ||
+              order.status == OrderStatus.shipped ||
+              order.status == OrderStatus.delivered) ...[
+            const SizedBox(height: 12),
+            AddToGoogleWalletButton(orderId: order.id),
           ],
         ],
       ),
@@ -228,6 +236,10 @@ class _StatusBadge extends StatelessWidget {
       case OrderStatus.pending:
         bgColor = Colors.amber[100]!;
         textColor = Colors.amber[900]!;
+        break;
+      case OrderStatus.paid:
+        bgColor = Colors.green[100]!;
+        textColor = Colors.green[900]!;
         break;
       case OrderStatus.processing:
         bgColor = Colors.blue[100]!;

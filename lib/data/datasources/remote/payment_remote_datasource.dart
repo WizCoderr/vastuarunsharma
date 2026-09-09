@@ -12,36 +12,20 @@ class PaymentRemoteDataSource {
   final DioClient client;
   PaymentRemoteDataSource(this.client);
 
-  Future<OrderResponse> createOrder(String courseId) async {
+  Future<PayuPaymentParams> createOrder(String courseId) async {
     try {
       if (courseId.trim().isEmpty) {
-        debugPrint('CreateOrder: empty courseId provided');
         throw Exception('courseId is required');
       }
 
-      final payload = {'courseId': courseId};
-      debugPrint('CreateOrder payload: $payload');
-
-      final resp = await client.post(
-        ApiEndpoints.courseOrder,
-        data: payload,
-      );
-
-      debugPrint('CreateOrder response status: ${resp.statusCode}');
-      debugPrint('CreateOrder raw body: ${resp.data}');
-
-      final body = resp.data;
-      return _parseOrderResponse(body, resp);
+      final payload = {'courseId': courseId, 'channel': 'app'};
+      final resp = await client.post(ApiEndpoints.courseOrder, data: payload);
+      return _parsePayuParams(resp.data, resp);
     } on DioException catch (e) {
-      final uri = e.requestOptions.uri.toString();
-      final status = e.response?.statusCode;
-      final body = e.response?.data;
-      final msg = 'CreateOrder failed: $uri -> $status ${body ?? e.message}';
+      final msg =
+          'CreateOrder failed: ${e.requestOptions.uri} -> ${e.response?.statusCode} ${e.response?.data ?? e.message}';
       debugPrint(msg);
       throw Exception(msg);
-    } catch (e) {
-      debugPrint('CreateOrder unexpected error: $e');
-      rethrow;
     }
   }
 
@@ -93,79 +77,54 @@ class PaymentRemoteDataSource {
     throw Exception('Invalid payment status response');
   }
 
-  Future<OrderResponse> createRemediesOrder(String orderId) async {
+  Future<PayuPaymentParams> createRemediesOrder(String orderId) async {
     try {
       if (orderId.trim().isEmpty) {
-        debugPrint('createRemediesOrder: empty orderId provided');
         throw Exception('orderId is required');
       }
 
-      final payload = {'orderId': orderId};
-      debugPrint('createRemediesOrder payload: $payload');
-
-      final resp = await client.post(
-        ApiEndpoints.remediesOrder,
-        data: payload,
-      );
-
-      debugPrint('createRemediesOrder response status: ${resp.statusCode}');
-      debugPrint('createRemediesOrder raw body: ${resp.data}');
-
-      final body = resp.data;
-      return _parseOrderResponse(body, resp);
+      final payload = {'orderId': orderId, 'channel': 'app'};
+      final resp = await client.post(ApiEndpoints.remediesOrder, data: payload);
+      return _parsePayuParams(resp.data, resp);
     } on DioException catch (e) {
-      final uri = e.requestOptions.uri.toString();
-      final status = e.response?.statusCode;
-      final body = e.response?.data;
       final msg =
-          'createRemediesOrder failed: $uri -> $status ${body ?? e.message}';
+          'createRemediesOrder failed: ${e.requestOptions.uri} -> ${e.response?.statusCode} ${e.response?.data ?? e.message}';
       debugPrint(msg);
       throw Exception(msg);
-    } catch (e) {
-      debugPrint('createRemediesOrder unexpected error: $e');
-      rethrow;
     }
   }
 
-  OrderResponse _parseOrderResponse(dynamic body, Response resp) {
+  PayuPaymentParams _parsePayuParams(dynamic body, Response resp) {
     Map<String, dynamic> orderJson;
 
     if (body is Map<String, dynamic>) {
-      // Case 1: Standard wrapped response { success: true, data: { ... } }
-      if (body.containsKey('success') &&
-          body['data'] is Map<String, dynamic>) {
-        orderJson = Map<String, dynamic>.from(
-          body['data'] as Map<String, dynamic>,
-        );
-      }
-      // Case 2: Some endpoints return { data: { ... } }
-      else if (body.containsKey('data') &&
-          body['data'] is Map<String, dynamic>) {
-        orderJson = Map<String, dynamic>.from(
-          body['data'] as Map<String, dynamic>,
-        );
-      }
-      // Case 3: Raw order object like { orderId: '...', amount: 50000, keyId: '...' }
-      else if (body.containsKey('orderId') || body.containsKey('id')) {
+      if (body.containsKey('success') && body['data'] is Map<String, dynamic>) {
+        orderJson = Map<String, dynamic>.from(body['data'] as Map<String, dynamic>);
+      } else if (body.containsKey('data') && body['data'] is Map<String, dynamic>) {
+        orderJson = Map<String, dynamic>.from(body['data'] as Map<String, dynamic>);
+      } else if (body.containsKey('txnid') ||
+          body.containsKey('orderId') ||
+          body.containsKey('id') ||
+          body.containsKey('hash')) {
         orderJson = Map<String, dynamic>.from(body);
-        if (orderJson.containsKey('orderId')) {
-          orderJson['id'] = orderJson.remove('orderId');
-        }
-        if (orderJson.containsKey('keyId')) {
-          orderJson['key'] = orderJson.remove('keyId');
-        }
       } else {
-        final errMsg = 'Unexpected createOrder response: ${resp.data}';
-        debugPrint(errMsg);
-        throw Exception(errMsg);
+        throw Exception('Unexpected createOrder response: ${resp.data}');
       }
 
-      return OrderResponse.fromJson(orderJson);
+      return PayuPaymentParams.fromJson(orderJson);
     }
 
-    final errMsg =
-        'Unexpected createOrder response type: ${resp.data.runtimeType}';
-    throw Exception(errMsg);
+    throw Exception(
+      'Unexpected createOrder response type: ${resp.data.runtimeType}',
+    );
+  }
+
+  Future<PayuPaymentParams> createInstallmentOrder(String paymentId) async {
+    final resp = await client.post(
+      ApiEndpoints.installmentOrder,
+      data: {'paymentId': paymentId, 'channel': 'app'},
+    );
+    return _parsePayuParams(resp.data, resp);
   }
 
   Future<List<StudentPaymentModel>> getStudentCoursePayments(
@@ -173,145 +132,116 @@ class PaymentRemoteDataSource {
   ) async {
     try {
       final resp = await client.get(ApiEndpoints.studentCoursePayments(courseId));
-      final api = ApiResponse<List<dynamic>>.fromJson(
-        resp.data as Map<String, dynamic>,
-        (j) => j as List<dynamic>,
-      );
-
-      if (api.success) {
-        return api.data
-                ?.map(
-                  (e) => StudentPaymentModel.fromJson(e as Map<String, dynamic>),
-                )
-                .toList() ??
-            [];
+      final body = resp.data;
+      if (body is! Map<String, dynamic>) {
+        throw Exception('Invalid student payments response');
       }
-      throw Exception(api.message ?? 'Failed to fetch student payments');
+
+      final data = body['data'] is Map<String, dynamic>
+          ? body['data'] as Map<String, dynamic>
+          : body;
+
+      final listRaw = data['payments'];
+      if (listRaw is! List) {
+        if (body['data'] is List) {
+          return (body['data'] as List)
+              .map((e) => StudentPaymentModel.fromJson({
+                    ...(e as Map<String, dynamic>),
+                    'courseId': courseId,
+                    'title': (e as Map)['title'] ?? e['stage'] ?? e['stageName'],
+                  }))
+              .toList();
+        }
+        throw Exception('Student payments list missing');
+      }
+
+      return listRaw.map((e) {
+        final map = Map<String, dynamic>.from(e as Map<String, dynamic>);
+        map['courseId'] = map['courseId'] ?? courseId;
+        map['title'] =
+            map['title'] ?? map['stage'] ?? map['stageName'] ?? 'Installment';
+        return StudentPaymentModel.fromJson(map);
+      }).toList();
     } catch (e) {
       debugPrint('GetStudentCoursePayments error: $e');
       rethrow;
     }
   }
 
-  Future<String?> verifyPayment(
-    String razorpayOrderId,
-    String razorpayPaymentId,
-    String razorpaySignature, {
-    required String courseId,
+  Future<String> generatePayuHash({
+    required String txnid,
+    required String hashName,
+    String? hashString,
+    String? hashType,
+    String? postSalt,
   }) async {
-    try {
-      // Validate exact required params
-      if (razorpayOrderId.trim().isEmpty ||
-          razorpayPaymentId.trim().isEmpty ||
-          razorpaySignature.trim().isEmpty ||
-          courseId.trim().isEmpty) {
-        debugPrint(
-          'VerifyPayment: missing required fields -> order:$razorpayOrderId payment:$razorpayPaymentId signature:$razorpaySignature course:$courseId',
-        );
-        throw Exception('Incomplete payment details');
+    final resp = await client.post(
+      ApiEndpoints.payuHash,
+      data: {
+        'txnid': txnid,
+        'hashName': hashName,
+        'hashString': ?hashString,
+        'hashType': ?hashType,
+        'postSalt': ?postSalt,
+      },
+    );
+
+    final body = resp.data;
+    Map<String, dynamic> data;
+    if (body is Map<String, dynamic>) {
+      if (body['data'] is Map<String, dynamic>) {
+        data = Map<String, dynamic>.from(body['data'] as Map);
+      } else {
+        data = body;
       }
-
-      final payload = {
-        'razorpay_order_id': razorpayOrderId,
-        'razorpay_payment_id': razorpayPaymentId,
-        'razorpay_signature': razorpaySignature,
-        'courseId': courseId,
-      };
-
-      debugPrint('VerifyPayment payload: $payload');
-
-      final resp =
-          await client.post(ApiEndpoints.courseVerify, data: payload);
-
-      debugPrint('VerifyPayment response status: ${resp.statusCode}');
-      debugPrint('VerifyPayment response body: ${resp.data}');
-
-      final api = ApiResponse<dynamic>.fromJson(
-        resp.data as Map<String, dynamic>,
-        (j) => j,
-      );
-
-      if (api.success) {
-        // Response data might contain serialNumber directly or inside a map
-        if (api.data is Map<String, dynamic>) {
-          return api.data['serialNumber'] as String?;
-        }
-        return api.data?.toString();
-      }
-
-      final errMsg = api.message ?? 'Payment verification failed: ${resp.data}';
-      throw Exception(errMsg);
-    } on DioException catch (e) {
-      final uri = e.requestOptions.uri.toString();
-      final status = e.response?.statusCode;
-      final body = e.response?.data;
-      final msg = 'VerifyPayment failed: $uri -> $status ${body ?? e.message}';
-      debugPrint(msg);
-      throw Exception(msg);
-    } catch (e) {
-      debugPrint('VerifyPayment unexpected error: $e');
-      rethrow;
+    } else {
+      throw Exception('Invalid hash response');
     }
+
+    final hash = data['hash']?.toString();
+    if (hash == null || hash.isEmpty) {
+      throw Exception('Hash missing from server response');
+    }
+    return hash;
   }
 
-  Future<bool> verifyRemediesPayment(
-    String razorpayOrderId,
-    String razorpayPaymentId,
-    String razorpaySignature,
-    String orderId,
-  ) async {
-    try {
-      // Validate exact required params
-      if (razorpayOrderId.trim().isEmpty ||
-          razorpayPaymentId.trim().isEmpty ||
-          razorpaySignature.trim().isEmpty ||
-          orderId.trim().isEmpty) {
-        debugPrint(
-          'verifyRemediesPayment: missing required fields -> order:$razorpayOrderId payment:$razorpayPaymentId signature:$razorpaySignature orderId:$orderId',
+  Future<PayuStatusResponse> getPayuStatus(String txnid) async {
+    final resp = await client.get(ApiEndpoints.payuStatus(txnid));
+    final body = resp.data;
+    if (body is Map<String, dynamic>) {
+      if (body['data'] is Map<String, dynamic>) {
+        return PayuStatusResponse.fromJson(
+          Map<String, dynamic>.from(body['data'] as Map),
         );
-        throw Exception('Incomplete payment details');
       }
-
-      final payload = {
-        'razorpay_order_id': razorpayOrderId,
-        'razorpay_payment_id': razorpayPaymentId,
-        'razorpay_signature': razorpaySignature,
-        'orderId': orderId,
-      };
-
-      debugPrint('verifyRemediesPayment payload: $payload');
-
-      final resp =
-          await client.post(ApiEndpoints.remediesVerify, data: payload);
-
-      debugPrint(
-          'verifyRemediesPayment response status: ${resp.statusCode}');
-      debugPrint('verifyRemediesPayment response body: ${resp.data}');
-
-      final api = ApiResponse<dynamic>.fromJson(
-        resp.data as Map<String, dynamic>,
-        (j) => j,
-      );
-
-      if (api.success) {
-        return true;
-      }
-
-      final errMsg =
-          api.message ?? 'Payment verification failed: ${resp.data}';
-      throw Exception(errMsg);
-    } on DioException catch (e) {
-      final uri = e.requestOptions.uri.toString();
-      final status = e.response?.statusCode;
-      final body = e.response?.data;
-      final msg =
-          'verifyRemediesPayment failed: $uri -> $status ${body ?? e.message}';
-      debugPrint(msg);
-      throw Exception(msg);
-    } catch (e) {
-      debugPrint('verifyRemediesPayment unexpected error: $e');
-      rethrow;
+      return PayuStatusResponse.fromJson(body);
     }
+    throw Exception('Invalid PayU status response');
+  }
+
+  /// Polls backend until payment is fulfilled (or failed).
+  /// Defaults ~60s so S2S verify can catch up when PayU cannot hit localhost callback.
+  Future<PayuStatusResponse> waitForPayuFulfillment(
+    String txnid, {
+    int maxAttempts = 30,
+    Duration interval = const Duration(seconds: 2),
+  }) async {
+    PayuStatusResponse? last;
+    for (var i = 0; i < maxAttempts; i++) {
+      last = await getPayuStatus(txnid);
+      final s = last.status.toUpperCase();
+      if (s == 'PAID' || s == 'COMPLETED' || s == 'FAILED' || s == 'REFUNDED') {
+        return last;
+      }
+      await Future<void>.delayed(interval);
+    }
+    return last ??
+        PayuStatusResponse(
+          txnid: txnid,
+          status: 'PENDING',
+          amount: '',
+          type: 'PRODUCT',
+        );
   }
 
   Future<bool> freeEnroll(String courseId) async {
@@ -320,15 +250,11 @@ class PaymentRemoteDataSource {
         throw Exception('courseId is required');
       }
 
-      final payload = {'courseId': courseId};
-      debugPrint('FreeEnroll payload: $payload');
+      final resp = await client.post(
+        ApiEndpoints.freeEnroll,
+        data: {'courseId': courseId},
+      );
 
-      final resp = await client.post(ApiEndpoints.freeEnroll, data: payload);
-
-      debugPrint('FreeEnroll response status: ${resp.statusCode}');
-      debugPrint('FreeEnroll response body: ${resp.data}');
-
-      // Handle null or empty response
       if (resp.data == null) {
         throw Exception('Empty response from server');
       }
@@ -348,18 +274,12 @@ class PaymentRemoteDataSource {
         return true;
       }
 
-      final errMsg = api.message ?? 'Free enrollment failed: ${resp.data}';
-      throw Exception(errMsg);
+      throw Exception(api.message ?? 'Free enrollment failed: ${resp.data}');
     } on DioException catch (e) {
-      final uri = e.requestOptions.uri.toString();
-      final status = e.response?.statusCode;
-      final body = e.response?.data;
-      final msg = 'FreeEnroll failed: $uri -> $status ${body ?? e.message}';
+      final msg =
+          'FreeEnroll failed: ${e.requestOptions.uri} -> ${e.response?.statusCode} ${e.response?.data ?? e.message}';
       debugPrint(msg);
       throw Exception(msg);
-    } catch (e) {
-      debugPrint('FreeEnroll unexpected error: $e');
-      rethrow;
     }
   }
 }

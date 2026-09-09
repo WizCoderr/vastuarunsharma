@@ -199,12 +199,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteConstants.remediesPaymentPath,
         builder: (context, state) {
-          final orderId = state.extra as String;
+          final orderId = state.pathParameters['orderId'] ?? '';
           return RemediesPaymentScreen(orderId: orderId);
         },
         redirect: (context, state) {
           if (!isLoggedIn()) {
             return '${RouteConstants.login}?returnUrl=${state.matchedLocation}';
+          }
+          final orderId = state.pathParameters['orderId'] ?? '';
+          if (orderId.isEmpty) {
+            return RouteConstants.ordersPath;
           }
           return null;
         },

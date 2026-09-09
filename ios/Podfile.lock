@@ -11,22 +11,79 @@ PODS:
   - GoogleMaps (9.4.0):
     - GoogleMaps/Maps (= 9.4.0)
   - GoogleMaps/Maps (9.4.0)
-  - razorpay-pod (1.5.4)
-  - razorpay_flutter (1.1.10):
+  - payu_checkoutpro_flutter (1.2.0):
     - Flutter
-    - razorpay-pod
+    - PayUIndia-CheckoutPro (~> 9.4)
+  - PayUIndia-Analytics (4.1.0):
+    - PayUIndia-NetworkReachability (~> 2.1)
+  - PayUIndia-AssetLibrary (4.0.1)
+  - PayUIndia-CardScanner (2.1.0)
+  - PayUIndia-CheckoutPro (9.4.0):
+    - PayUIndia-AssetLibrary (~> 4.0)
+    - PayUIndia-CardScanner (~> 2.1)
+    - PayUIndia-CheckoutProBase (~> 9.4)
+    - PayUIndia-CommonUI (~> 2.4)
+    - PayUIndia-CrashReporter (~> 4.0)
+    - PayUIndia-Custom-Browser (~> 11.3)
+    - PayUIndia-NativeOtpAssist (~> 5.0)
+    - PayUIndia-NetworkReachability (~> 2.0)
+    - PayUIndia-PayUParams (~> 7.3)
+    - PayUIndia-PG-SDK (~> 12.3)
+    - PayUIndia-UPICore (~> 11.3)
+  - PayUIndia-CheckoutProBase (9.4.0):
+    - PayUIndia-PayUParams (~> 7.3)
+    - PayUIndia-PG-SDK (~> 12.3)
+  - PayUIndia-CommonUI (2.4.0):
+    - PayUIndia-Analytics (~> 4.0)
+    - PayUIndia-CrashReporter (~> 4.0)
+  - PayUIndia-CrashReporter (4.0.3)
+  - PayUIndia-Custom-Browser (11.3.0):
+    - PayUIndia-CommonUI (~> 2.3)
+  - PayUIndia-Logger (5.0.1)
+  - PayUIndia-NativeOtpAssist (5.0.2):
+    - PayUIndia-Analytics (~> 4.1)
+    - PayUIndia-CommonUI (~> 2.4)
+    - PayUIndia-CrashReporter (~> 4.0)
+    - PayUIndia-NetworkReachability (~> 2.1)
+    - PayUIndia-PayUParams (~> 7.4)
+  - PayUIndia-Networking (5.0.1):
+    - PayUIndia-Logger (~> 5.0)
+  - PayUIndia-NetworkReachability (2.1.1)
+  - PayUIndia-PayUParams (7.4.0)
+  - PayUIndia-PG-SDK (12.3.0):
+    - PayUIndia-CrashReporter (~> 4.0)
+    - PayUIndia-NetworkReachability (~> 2.1)
+    - PayUIndia-PayUParams (~> 7.3)
+  - PayUIndia-UPICore (11.3.1):
+    - PayUIndia-CommonUI (~> 2.4)
+    - PayUIndia-Networking (~> 5.0)
+    - PayUIndia-PayUParams (~> 7.4)
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
   - flutter_compass (from `.symlinks/plugins/flutter_compass/ios`)
   - google_maps_flutter_ios (from `.symlinks/plugins/google_maps_flutter_ios/ios`)
-  - razorpay_flutter (from `.symlinks/plugins/razorpay_flutter/ios`)
+  - payu_checkoutpro_flutter (from `.symlinks/plugins/payu_checkoutpro_flutter/ios`)
 
 SPEC REPOS:
   trunk:
     - Google-Maps-iOS-Utils
     - GoogleMaps
-    - razorpay-pod
+    - PayUIndia-Analytics
+    - PayUIndia-AssetLibrary
+    - PayUIndia-CardScanner
+    - PayUIndia-CheckoutPro
+    - PayUIndia-CheckoutProBase
+    - PayUIndia-CommonUI
+    - PayUIndia-CrashReporter
+    - PayUIndia-Custom-Browser
+    - PayUIndia-Logger
+    - PayUIndia-NativeOtpAssist
+    - PayUIndia-Networking
+    - PayUIndia-NetworkReachability
+    - PayUIndia-PayUParams
+    - PayUIndia-PG-SDK
+    - PayUIndia-UPICore
 
 EXTERNAL SOURCES:
   Flutter:
@@ -35,17 +92,31 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_compass/ios"
   google_maps_flutter_ios:
     :path: ".symlinks/plugins/google_maps_flutter_ios/ios"
-  razorpay_flutter:
-    :path: ".symlinks/plugins/razorpay_flutter/ios"
+  payu_checkoutpro_flutter:
+    :path: ".symlinks/plugins/payu_checkoutpro_flutter/ios"
 
 SPEC CHECKSUMS:
-  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
   flutter_compass: b236ab69b61545cce89fd58527f401a7587d5cc1
   Google-Maps-iOS-Utils: 0a484b05ed21d88c9f9ebbacb007956edd508a96
   google_maps_flutter_ios: 17552876e72723da1d41accc22f03b5f7afbde69
   GoogleMaps: 0608099d4870cac8754bdba9b6953db543432438
-  razorpay-pod: 3ba80419f3315352d6ffa336a194ad95ab249700
-  razorpay_flutter: 0e98e4fcaae27ad50e011d85f66d85e0a008754a
+  payu_checkoutpro_flutter: 29c0581cdf414fa42418dbb3e82c57d4267c1c44
+  PayUIndia-Analytics: 0cec0e6783db70080f7ca2721ae024bc26af7fb4
+  PayUIndia-AssetLibrary: e40d7697c37aea55f184e29564e2f8b63a63b472
+  PayUIndia-CardScanner: d6d024645e7fab58326e0d00b22ed42ca0ad5dc1
+  PayUIndia-CheckoutPro: 3807ac71387743022d03175bfda297433ed43eb1
+  PayUIndia-CheckoutProBase: 9baa5a5a727b05a6afffb86837e152ad7d4f34a8
+  PayUIndia-CommonUI: 5e50ef5a9b33522194ace051ff5c6835e1039200
+  PayUIndia-CrashReporter: f3dc6fe34a4f26d31107e508c4a9b17902c36b83
+  PayUIndia-Custom-Browser: cea86601cfea2f1878e2896d37c8ab31215adb45
+  PayUIndia-Logger: 50866e18a275b0726ed59afaea67b6529ab42774
+  PayUIndia-NativeOtpAssist: 1cb3b38cc7171af02150d2b3ed2c793b5e327a87
+  PayUIndia-Networking: 0709588fd96b6b42c1398d07471cf87ef2c0db71
+  PayUIndia-NetworkReachability: 581c04b9ea3a8aaa78faef179ad819759942f381
+  PayUIndia-PayUParams: 6310b2608d0ac91bbe157423a591542f9db43c29
+  PayUIndia-PG-SDK: 37a47ba93f2123fba997447d8f9a9ec6cafb8172
+  PayUIndia-UPICore: 7bb274956b9d1d55b999cec7795abba478312486
 
 PODFILE CHECKSUM: 4b113fae0367fe9993015982bfe6d2baa64a0dd8
 

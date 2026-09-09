@@ -44,6 +44,13 @@ class ApiEndpoints {
   static const String courseVerify = '/api/payments/course/verify';
   static String studentCoursePayments(String courseId) =>
       '/api/payments/course/$courseId/my-payments';
+  static String courseInstallment(String paymentId) =>
+      '/api/payments/course/installment/$paymentId';
+  /// Plan alias — body: `{ paymentId }`
+  static const String installmentOrder = '/api/payments/installment/order';
+  static String coursePaymentPlan(String courseId) =>
+      '/api/payments/course/plan/$courseId';
+  static String paymentPlan(String courseId) => '/api/payments/plan/$courseId';
   static const String remediesOrder = '/api/payments/remidies/order';
   static const String remediesVerify = '/api/payments/remidies/verify';
   static const String freeEnroll = '/api/payments/free-enroll';
@@ -52,6 +59,8 @@ class ApiEndpoints {
   static String paymentStatus(String transactionId) =>
       '/api/payments/status/$transactionId';
   static const String paymentHistory = '/api/payments/history';
+  static const String payuHash = '/api/payments/payu/hash';
+  static String payuStatus(String txnid) => '/api/payments/payu/status/$txnid';
   static const String authRefresh = '/auth/refresh';
 
   // Remidies public catalog (no auth)
@@ -72,6 +81,16 @@ class ApiEndpoints {
   static const String remidiesValidateCoupon =
       '/api/student/remidies/coupons/validate';
   static const String remidiesCheckout = '/api/student/remidies/checkout';
+
+  // Google Wallet order receipts
+  static const String walletPasses = '/api/wallet/passes';
+  static String walletPass(String id) => '/api/wallet/passes/$id';
+  static String walletPassForOrder(String orderId) =>
+      '/api/wallet/orders/$orderId';
+  static String walletIssueForOrder(String orderId) =>
+      '/api/wallet/orders/$orderId/google-wallet';
+  static String walletRefreshPass(String id) =>
+      '/api/wallet/passes/$id/google-wallet/refresh';
 
   // Admin Remidies
   static const String adminRemidiesCoupons = '/api/admin/remidies/coupons';

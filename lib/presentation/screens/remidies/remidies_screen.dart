@@ -8,7 +8,7 @@ import 'package:vastuarunsharma/domain/providers/remidies/remidies_providers.dar
 import 'package:vastuarunsharma/presentation/screens/remidies/cart_screen.dart';
 import 'package:vastuarunsharma/presentation/screens/remidies/product_detail_screen.dart';
 
-bool isRemidiesShopOpeningSoon() => true ;
+bool isRemidiesShopOpeningSoon() => false ;
 
 class RemidiesScreen extends ConsumerStatefulWidget {
   const RemidiesScreen({super.key});

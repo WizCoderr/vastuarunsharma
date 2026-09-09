@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/route_constants.dart';
-import '../../../data/models/response/upi_payment_response.dart';
+import '../../../core/services/payu_checkout_flow.dart';
+import '../../../core/services/payu_checkout_service.dart';
 import '../../providers/payment_provider.dart';
 import '../../providers/refresh_provider.dart';
-import 'upi_payment_screen.dart';
 
 class RemediesPaymentScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -17,23 +17,84 @@ class RemediesPaymentScreen extends ConsumerStatefulWidget {
 }
 
 class _RemediesPaymentScreenState extends ConsumerState<RemediesPaymentScreen> {
-  UpiPaymentResponse? _payment;
   String? _error;
+  bool _loading = true;
+  bool _paying = false;
+  String _statusLabel = 'Creating payment…';
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initPayment());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startCheckout());
   }
 
-  Future<void> _initPayment() async {
+  Future<void> _startCheckout() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+      _paying = true;
+      _statusLabel = 'Creating payment…';
+    });
+
     try {
-      final payment = await ref
-          .read(paymentControllerProvider.notifier)
-          .createRemediesUpiPayment(widget.orderId);
-      if (mounted) setState(() => _payment = payment);
+      final controller = ref.read(paymentControllerProvider.notifier);
+      final params = await controller.createRemediesPayuOrder(widget.orderId);
+
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _statusLabel = 'Waiting for PayU…';
+        });
+      }
+
+      await PayuCheckoutFlow.run(
+        params: params,
+        generateHashFn: ({
+          required String txnid,
+          required String hashName,
+          String? hashString,
+          String? hashType,
+          String? postSalt,
+        }) =>
+            controller.generatePayuHash(
+              txnid: txnid,
+              hashName: hashName,
+              hashString: hashString,
+              hashType: hashType,
+              postSalt: postSalt,
+            ),
+        waitForFulfillment: controller.waitForPayuFulfillment,
+        onPhase: (phase) {
+          if (!mounted) return;
+          setState(() {
+            _statusLabel = switch (phase) {
+              PayuCheckoutPhase.waitingForPayu => 'Waiting for PayU…',
+              PayuCheckoutPhase.confirming => 'Confirming payment…',
+            };
+          });
+        },
+      );
+
+      if (!mounted) return;
+      ref.refreshOrders();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment Successful!')),
+      );
+      context.go(RouteConstants.ordersPath);
+    } on PayuCheckoutCancelledException {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Payment cancelled';
+        _loading = false;
+        _paying = false;
+      });
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
+        _paying = false;
+      });
     }
   }
 
@@ -42,37 +103,40 @@ class _RemediesPaymentScreenState extends ConsumerState<RemediesPaymentScreen> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Payment')),
-        body: Center(child: Text(_error!)),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_error!, textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _paying ? null : _startCheckout,
+                  child: const Text('Try again'),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
-    if (_payment == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    return UpiPaymentScreen(
-      payment: _payment!,
-      onPollStatus: (txnId) => ref
-          .read(paymentControllerProvider.notifier)
-          .getPaymentStatus(txnId),
-      onVerify: (txnId) => ref
-          .read(paymentControllerProvider.notifier)
-          .verifyUpiPayment(txnId),
-      onSuccess: () {
-        ref.refreshOrders();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment Successful!')),
-        );
-        context.go(RouteConstants.ordersPath);
-      },
-      onFailure: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment failed. Please retry.')),
-        );
-        context.go(RouteConstants.ordersPath);
-      },
+    return Scaffold(
+      appBar: AppBar(title: const Text('Payment')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              _statusLabel,
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

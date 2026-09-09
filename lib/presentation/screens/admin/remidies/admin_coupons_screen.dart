@@ -150,7 +150,7 @@ class _CouponTile extends StatelessWidget {
       _ => Colors.red,
     };
 
-    final discountLabel = coupon.discountType == DiscountType.PERCENTAGE
+    final discountLabel = coupon.discountType == DiscountType.percentage
         ? '${coupon.discountValue.toStringAsFixed(coupon.discountValue == coupon.discountValue.truncateToDouble() ? 0 : 1)}% off'
         : '₹${coupon.discountValue.toStringAsFixed(coupon.discountValue == coupon.discountValue.truncateToDouble() ? 0 : 2)} off';
 

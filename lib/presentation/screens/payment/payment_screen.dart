@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/route_constants.dart';
-import '../../../data/models/response/upi_payment_response.dart';
+import '../../../core/services/payu_checkout_flow.dart';
+import '../../../core/services/payu_checkout_service.dart';
 import '../../providers/course_provider.dart';
 import '../../providers/payment_provider.dart';
 import '../../providers/refresh_provider.dart';
-import 'upi_payment_screen.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   final String courseId;
@@ -17,7 +17,8 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 }
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
-  UpiPaymentResponse? _upiPayment;
+  bool _paying = false;
+  String? _phaseLabel;
 
   Future<void> _handleFreeEnrollment() async {
     try {
@@ -49,53 +50,82 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         return;
       }
 
-      final payment = await ref
-          .read(paymentControllerProvider.notifier)
-          .createCourseUpiPayment(widget.courseId);
+      setState(() {
+        _paying = true;
+        _phaseLabel = 'Creating payment…';
+      });
 
-      if (mounted) setState(() => _upiPayment = payment);
+      final controller = ref.read(paymentControllerProvider.notifier);
+      final params = await controller.createOrder(widget.courseId);
+
+      await PayuCheckoutFlow.run(
+        params: params,
+        generateHashFn: ({
+          required String txnid,
+          required String hashName,
+          String? hashString,
+          String? hashType,
+          String? postSalt,
+        }) =>
+            controller.generatePayuHash(
+              txnid: txnid,
+              hashName: hashName,
+              hashString: hashString,
+              hashType: hashType,
+              postSalt: postSalt,
+            ),
+        waitForFulfillment: controller.waitForPayuFulfillment,
+        onPhase: (phase) {
+          if (!mounted) return;
+          setState(() {
+            _phaseLabel = switch (phase) {
+              PayuCheckoutPhase.waitingForPayu => 'Waiting for PayU…',
+              PayuCheckoutPhase.confirming => 'Confirming payment…',
+            };
+          });
+        },
+      );
+
+      if (!mounted) return;
+      ref.refreshAfterEnrollment();
+      ref.refreshCourseDetails(widget.courseId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment Successful! Enrolling...')),
+      );
+      context.go(RouteConstants.enrollmentPath(widget.courseId));
+    } on PayuCheckoutCancelledException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment cancelled')),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to initiate payment: $e')),
+        SnackBar(
+          content: Text(
+            'Payment failed: ${e.toString().replaceFirst('Exception: ', '')}',
+          ),
+        ),
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _paying = false;
+          _phaseLabel = null;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_upiPayment != null) {
-      return UpiPaymentScreen(
-        payment: _upiPayment!,
-        onPollStatus: (txnId) => ref
-            .read(paymentControllerProvider.notifier)
-            .getPaymentStatus(txnId),
-        onVerify: (txnId) => ref
-            .read(paymentControllerProvider.notifier)
-            .verifyUpiPayment(txnId),
-        onSuccess: () {
-          ref.refreshAfterEnrollment();
-          ref.refreshCourseDetails(widget.courseId);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Payment Successful! Enrolling...')),
-          );
-          context.go(RouteConstants.enrollmentPath(widget.courseId));
-        },
-        onFailure: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Payment failed. Please retry.')),
-          );
-          setState(() => _upiPayment = null);
-        },
-      );
-    }
-
     final courseAsync = ref.watch(courseDetailsProvider(widget.courseId));
     final paymentState = ref.watch(paymentControllerProvider);
 
     final course = courseAsync.value;
     final activePlan = course?.activePaymentPlan;
     final displayPrice = activePlan?.amount ?? course?.price ?? 0.0;
+    final busy = _paying || paymentState.isLoading;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -179,10 +209,19 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               const SizedBox(height: 16),
               const Center(
                 child: Text(
-                  'Safe & Secure Payment via UPI',
+                  'Safe & Secure Payment via PayU',
                   style: TextStyle(color: Colors.grey),
                 ),
               ),
+              if (_phaseLabel != null) ...[
+                const SizedBox(height: 12),
+                Center(
+                  child: Text(
+                    _phaseLabel!,
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -197,9 +236,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
               ),
               child: ElevatedButton(
-                onPressed: paymentState.isLoading
-                    ? null
-                    : () => _startPayment(displayPrice),
+                onPressed: busy ? null : () => _startPayment(displayPrice),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -207,7 +244,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
-                child: paymentState.isLoading
+                child: busy
                     ? const SizedBox(
                         height: 20,
                         width: 20,
@@ -217,7 +254,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                         ),
                       )
                     : Text(
-                        displayPrice <= 0 ? 'Enroll Now' : 'Pay via UPI',
+                        displayPrice <= 0 ? 'Enroll Now' : 'Pay with PayU',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

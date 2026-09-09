@@ -2,6 +2,7 @@ import '../../shared/utils/either.dart';
 import '../../core/errors/failures.dart';
 import '../datasources/remote/payment_remote_datasource.dart';
 import '../models/response/order_response.dart';
+import '../models/response/student_payment_model.dart';
 import '../models/response/upi_payment_response.dart';
 
 class PaymentRepository {
@@ -9,9 +10,20 @@ class PaymentRepository {
 
   PaymentRepository(this.remoteDataSource);
 
-  Future<Either<Failure, OrderResponse>> createOrder(String courseId) async {
+  Future<Either<Failure, PayuPaymentParams>> createOrder(String courseId) async {
     try {
       final order = await remoteDataSource.createOrder(courseId);
+      return Right(order);
+    } catch (e) {
+      return Left(NetworkFailure(e.toString()));
+    }
+  }
+
+  Future<Either<Failure, PayuPaymentParams>> createInstallmentOrder(
+    String paymentId,
+  ) async {
+    try {
+      final order = await remoteDataSource.createInstallmentOrder(paymentId);
       return Right(order);
     } catch (e) {
       return Left(NetworkFailure(e.toString()));
@@ -29,26 +41,7 @@ class PaymentRepository {
     }
   }
 
-  Future<Either<Failure, String?>> verifyPayment({
-    required String razorpayOrderId,
-    required String razorpayPaymentId,
-    required String razorpaySignature,
-    required String courseId,
-  }) async {
-    try {
-      final serialNumber = await remoteDataSource.verifyPayment(
-        razorpayOrderId,
-        razorpayPaymentId,
-        razorpaySignature,
-        courseId: courseId,
-      );
-      return Right(serialNumber);
-    } catch (e) {
-      return Left(NetworkFailure(e.toString()));
-    }
-  }
-
-  Future<Either<Failure, OrderResponse>> createRemediesOrder(
+  Future<Either<Failure, PayuPaymentParams>> createRemediesOrder(
     String orderId,
   ) async {
     try {
@@ -59,20 +52,42 @@ class PaymentRepository {
     }
   }
 
-  Future<Either<Failure, bool>> verifyRemediesPayment({
-    required String razorpayOrderId,
-    required String razorpayPaymentId,
-    required String razorpaySignature,
-    required String orderId,
+  Future<Either<Failure, String>> generatePayuHash({
+    required String txnid,
+    required String hashName,
+    String? hashString,
+    String? hashType,
+    String? postSalt,
   }) async {
     try {
-      final success = await remoteDataSource.verifyRemediesPayment(
-        razorpayOrderId,
-        razorpayPaymentId,
-        razorpaySignature,
-        orderId,
+      final hash = await remoteDataSource.generatePayuHash(
+        txnid: txnid,
+        hashName: hashName,
+        hashString: hashString,
+        hashType: hashType,
+        postSalt: postSalt,
       );
-      return Right(success);
+      return Right(hash);
+    } catch (e) {
+      return Left(NetworkFailure(e.toString()));
+    }
+  }
+
+  Future<Either<Failure, PayuStatusResponse>> getPayuStatus(String txnid) async {
+    try {
+      final status = await remoteDataSource.getPayuStatus(txnid);
+      return Right(status);
+    } catch (e) {
+      return Left(NetworkFailure(e.toString()));
+    }
+  }
+
+  Future<Either<Failure, PayuStatusResponse>> waitForPayuFulfillment(
+    String txnid,
+  ) async {
+    try {
+      final status = await remoteDataSource.waitForPayuFulfillment(txnid);
+      return Right(status);
     } catch (e) {
       return Left(NetworkFailure(e.toString()));
     }

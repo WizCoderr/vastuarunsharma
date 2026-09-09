@@ -89,6 +89,8 @@ class Order {
     switch (status) {
       case OrderStatus.pending:
         return 'Pending';
+      case OrderStatus.paid:
+        return 'Paid';
       case OrderStatus.processing:
         return 'Processing';
       case OrderStatus.shipped:
