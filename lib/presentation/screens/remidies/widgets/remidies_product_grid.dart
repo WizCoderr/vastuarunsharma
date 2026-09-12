@@ -223,16 +223,17 @@ class RemidiesProductCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '₹${product.price.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          color: Colors.amber,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                      if (!product.isOutOfStock)
+                        Text(
+                          '₹${product.price.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Colors.amber,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
-                      ),
+                      const Spacer(),
                       GestureDetector(
                         onTap: product.isOutOfStock
                             ? null

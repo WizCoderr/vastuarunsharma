@@ -66,6 +66,32 @@ class ApiInterceptor extends Interceptor {
       );
     }
 
+    if (status == 429) {
+      final data = err.response?.data;
+      String message = 'Too many requests. Please wait and try again.';
+      if (data is Map) {
+        final error = data['error'];
+        final bodyMessage = data['message'];
+        if (error is String && error.isNotEmpty) {
+          message = error;
+        } else if (bodyMessage is String && bodyMessage.isNotEmpty) {
+          message = bodyMessage;
+        }
+      }
+      final retryAfter = err.response?.headers.value('retry-after');
+      if (retryAfter != null && retryAfter.isNotEmpty) {
+        message = '$message (Retry after ${retryAfter}s)';
+      }
+      return handler.reject(
+        DioException(
+          requestOptions: err.requestOptions,
+          error: ServerException(message, status),
+          response: err.response,
+          type: err.type,
+        ),
+      );
+    }
+
     if (err.type == DioExceptionType.connectionError ||
         err.error is SocketException) {
       return handler.reject(
@@ -78,7 +104,9 @@ class ApiInterceptor extends Interceptor {
 
     // For other HTTP errors, wrap as ServerException with status
     final message = err.response?.data is Map
-        ? (err.response?.data['message'] ?? err.message)
+        ? (err.response?.data['error'] ??
+            err.response?.data['message'] ??
+            err.message)
         : err.message;
     return handler.reject(
       DioException(

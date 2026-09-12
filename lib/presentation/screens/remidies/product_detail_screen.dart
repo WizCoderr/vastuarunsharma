@@ -213,16 +213,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                Text(
-                                  '₹${_formatPrice(product.price)}',
-                                  style: const TextStyle(
-                                    color: _primary,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: -0.3,
+                                if (!outOfStock)
+                                  Text(
+                                    '₹${_formatPrice(product.price)}',
+                                    style: const TextStyle(
+                                      color: _primary,
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: -0.3,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 16),
+                                if (!outOfStock) const SizedBox(width: 16),
                                 _Stars(rating: product.rating),
                                 const SizedBox(width: 6),
                                 Flexible(
@@ -659,7 +660,7 @@ class _BottomBar extends StatelessWidget {
                       : Text(
                           outOfStock
                               ? 'OUT OF STOCK'
-                              : 'ACQUIRE FOR SANCTUARY →',
+                              : 'Buy Now →',
                           style: TextStyle(
                             color: outOfStock
                                 ? const Color(0xFF9E9E9E)

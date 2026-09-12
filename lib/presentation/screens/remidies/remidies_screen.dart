@@ -450,14 +450,15 @@ class _HomeProductCard extends ConsumerWidget {
                     const Spacer(),
                     Row(
                       children: [
-                        Text(
-                          '₹${_formatPrice(product.price)}',
-                          style: const TextStyle(
-                            color: Color(0xFF984624),
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                        if (!product.isOutOfStock)
+                          Text(
+                            '₹${_formatPrice(product.price)}',
+                            style: const TextStyle(
+                              color: Color(0xFF984624),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
                         const Spacer(),
                         IconButton(
                           visualDensity: VisualDensity.compact,

@@ -458,14 +458,15 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(
-                          '₹${_formatPrice(product.price)}',
-                          style: const TextStyle(
-                            color: _onSurface,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                        if (!product.isOutOfStock)
+                          Text(
+                            '₹${_formatPrice(product.price)}',
+                            style: const TextStyle(
+                              color: _onSurface,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
                         const Spacer(),
                         _AddButton(
                           disabled: product.isOutOfStock,
